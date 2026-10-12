@@ -10,6 +10,7 @@ import 'package:pdfrx/pdfrx.dart';
 
 import '../document_format.dart';
 import '../page_unavailable.dart';
+import '../zoom_range.dart';
 import 'pdf_document_format.dart';
 import 'pdf_paged_layout.dart';
 import 'pdf_view_controller.dart';
@@ -118,6 +119,19 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
         : continuousLayout(sizes, view, widget.config.fit);
   }
 
+  /// Zoom 1.0 is the normal view: pages are laid out at the fit already.
+  static double? _normalZoom(
+          PdfDocument document, PdfViewerController controller, double fit, double cover) =>
+      1.0;
+
+  /// Zoom limits from the current page as laid out at the normal view (FR-018).
+  ZoomRange _zoomRange(Size view) {
+    if (view.isEmpty) return const ZoomRange(1, 5);
+    final page = widget.document.pageSize(_c.isReady ? _c.position.page : 1);
+    final s = fitScale(page.width, page.height, view, widget.config.fit);
+    return zoomRange(pageAtNormal: page * s, view: view);
+  }
+
   Matrix4 _normalize(Matrix4 m, Size viewSize, PdfPageLayout layout, PdfViewerController? c) {
     if (!_paged || _view.isEmpty || layout.pageLayouts.isEmpty) return m;
     return clampToPage(m,
@@ -136,6 +150,10 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
         // Rotation or a window resize: stay on the same content (FR-015).
         if (keep != null) _afterLayout(() => _c.goTo(keep, animate: false));
       }
+      final range = _zoomRange(size);
+      _c
+        ..minZoom = range.min
+        ..maxZoom = range.max;
       final viewer = PdfViewer(
         _ref,
         controller: _c.pdf,
@@ -147,10 +165,10 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           margin: 0,
           backgroundColor: config.backgroundColor,
           sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
-            minScale: _c.minZoom,
-            maxScale: _c.maxZoom,
+            minScale: range.min,
+            maxScale: range.max,
             useAlternativeFitScaleAsMinScale: false,
-            calculateInitialZoom: (document, controller, fitZoom, coverZoom) => 1.0,
+            calculateInitialZoom: _normalZoom,
           ),
           // Taps belong to the reader's TapDetector (research R3); pdfrx handles none.
           onGeneralTap: (context, controller, details) => true,

@@ -9,6 +9,7 @@ import 'package:pdfrx/pdfrx.dart';
 
 import '../document_format.dart';
 import '../paged_snap.dart';
+import '../zoom_range.dart';
 
 class PdfViewController extends ChangeNotifier implements DocumentViewController {
   PdfViewController() {
@@ -154,16 +155,19 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   Future<void> scrollBy(double fraction) =>
       _scrollDocument(fraction * viewSize.height / pdf.currentZoom);
 
+  ZoomRange get _range => ZoomRange(minZoom, maxZoom);
+
   Future<void> setZoom(double zoom) async {
     if (!isReady) return;
-    await pdf.setZoom(pdf.centerPosition, zoom.clamp(minZoom, maxZoom));
+    await pdf.setZoom(pdf.centerPosition, _range.clamp(zoom));
   }
 
+  /// Around the centre of the view (FR-016).
   @override
-  Future<void> zoomIn() => setZoom(zoom * 1.25);
+  Future<void> zoomIn() => setZoom(_range.stepIn(zoom));
 
   @override
-  Future<void> zoomOut() => setZoom(zoom / 1.25);
+  Future<void> zoomOut() => setZoom(_range.stepOut(zoom));
 
   @override
   PagePoint? pagePointAt(Offset globalPosition) {

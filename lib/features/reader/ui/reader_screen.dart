@@ -24,10 +24,9 @@ import 'settings_sheet.dart';
 import 'tap_detector.dart';
 
 /// View builders per format id. Overridden in tests.
-final documentViewFactoriesProvider =
-    Provider<Map<String, DocumentViewFactory>>(
-      (ref) => const {'pdf': PdfDocumentViewFactory()},
-    );
+final documentViewFactoriesProvider = Provider<Map<String, DocumentViewFactory>>(
+  (ref) => const {'pdf': PdfDocumentViewFactory()},
+);
 
 class ReaderScreen extends ConsumerStatefulWidget {
   const ReaderScreen({super.key, required this.bookId});
@@ -90,10 +89,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   /// On phones and tablets the system bars come and go with the reader's (FR-004).
-  void _setSystemBars({required bool visible}) =>
-      SystemChrome.setEnabledSystemUIMode(
-        visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
-      );
+  void _setSystemBars({required bool visible}) => SystemChrome.setEnabledSystemUIMode(
+    visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
+  );
 
   Future<void> _open() async {
     final library = ref.read(libraryRepositoryProvider);
@@ -105,16 +103,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
       final file = await ref.read(bookFileStoreProvider).find(book.id);
       if (file == null) {
-        return _fail(
-          'This book’s file is missing. Remove it from the library and add it again.',
-        );
+        return _fail('This book’s file is missing. Remove it from the library and add it again.');
       }
-      final format = ref
-          .read(documentFormatsProvider)
-          .firstWhere((f) => f.id == book.format);
-      final stored = book.isPasswordProtected
-          ? await passwords.read(book.id)
-          : null;
+      final format = ref.read(documentFormatsProvider).firstWhere((f) => f.id == book.format);
+      final stored = book.isPasswordProtected ? await passwords.read(book.id) : null;
 
       final doc = await format.open(
         file,
@@ -122,11 +114,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         askPassword: ({required retry}) async {
           if (!mounted) return null;
           // A failed stored password counts as a wrong password.
-          return showPasswordDialog(
-            context,
-            fileName: book.title,
-            retry: retry || stored != null,
-          );
+          return showPasswordDialog(context, fileName: book.title, retry: retry || stored != null);
         },
       );
       if (!mounted) {
@@ -158,10 +146,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         _mode = mode;
         _start = _position = start;
         _saver =
-            ProgressSaver(
-                pageCount: doc.pageCount,
-                save: (p) => _repo.savePosition(book.id, p),
-              )
+            ProgressSaver(pageCount: doc.pageCount, save: (p) => _repo.savePosition(book.id, p))
               // The view only reports changes; record the starting position too, so an
               // opened book is never shown as "New" again.
               ..positionChanged(start);
@@ -213,11 +198,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _onTap(Offset global, Offset local, double viewWidth) {
     final view = _view!;
     final point = view.pagePointAt(global);
-    final action = classifyTap(
-      x: local.dx,
-      viewWidth: viewWidth,
-      pagePoint: point,
-    );
+    final action = classifyTap(x: local.dx, viewWidth: viewWidth, pagePoint: point);
     switch (action) {
       case ToggleControls():
         _controls.toggle();
@@ -251,12 +232,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _openSettings() => _withControlsHeld(
     () => showReaderSettings(
       context,
-      initial: ReaderSettings(
-        mode: _mode,
-        fit: _prefs.fit,
-        theme: _prefs.theme,
-      ),
+      initial: ReaderSettings(mode: _mode, fit: _prefs.fit, theme: _prefs.theme),
       onMode: _setMode,
+      onFit: _repo.setFit,
     ),
   );
 
@@ -277,10 +255,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   BarColors get _barColors {
     final scheme = Theme.of(context).colorScheme;
-    return BarColors(
-      background: scheme.surfaceContainer,
-      foreground: scheme.onSurface,
-    );
+    return BarColors(background: scheme.surfaceContainer, foreground: scheme.onSurface);
   }
 
   ReaderViewConfig _config() => ReaderViewConfig(
@@ -297,9 +272,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (error != null) return Scaffold(body: _ErrorMessage(message: error));
     if (doc == null) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(semanticsLabel: 'Opening book'),
-        ),
+        body: Center(child: CircularProgressIndicator(semanticsLabel: 'Opening book')),
       );
     }
     final colors = _barColors;
@@ -318,19 +291,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 // Screen-reader users turn pages without the edge zones (FR-040).
                 customSemanticsActions: {
                   const CustomSemanticsAction(label: 'Next page'): view.next,
-                  const CustomSemanticsAction(label: 'Previous page'):
-                      view.previous,
+                  const CustomSemanticsAction(label: 'Previous page'): view.previous,
                 },
                 child: LayoutBuilder(
                   builder: (context, constraints) => TapDetector(
                     movement: view,
-                    onTap: (global, local) =>
-                        _onTap(global, local, constraints.maxWidth),
-                    child: _factory!.build(
-                      doc,
-                      controller: view,
-                      config: _config(),
-                    ),
+                    onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
+                    child: _factory!.build(doc, controller: view, config: _config()),
                   ),
                 ),
               ),
@@ -366,6 +333,20 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                           page: _position.page,
                           pageCount: doc.pageCount,
                           colors: colors,
+                          leading: [
+                            IconButton(
+                              icon: const Icon(Icons.zoom_out),
+                              tooltip: 'Zoom out',
+                              onPressed: view.zoomOut,
+                            ),
+                          ],
+                          trailing: [
+                            IconButton(
+                              icon: const Icon(Icons.zoom_in),
+                              tooltip: 'Zoom in',
+                              onPressed: view.zoomIn,
+                            ),
+                          ],
                           onSliderStart: _controls.hold,
                           onSliderEnd: (page) {
                             _controls.release();
@@ -397,11 +378,7 @@ class _ErrorMessage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: Theme.of(context).colorScheme.error,
-          ),
+          Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
           const SizedBox(height: 16),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 24),

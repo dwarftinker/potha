@@ -137,14 +137,14 @@ on its own.
 
 ### Tests for User Story 4 (write first, confirm they fail) ⚠️
 
-- [ ] T039 [P] [US4] Unit-test zoom limits in test/unit/reader/zoom_range_test.dart: for a page size and view size, the minimum is the scale that fits the whole page and the maximum is 5× the fit-width scale (FR-018); `normalScale(fit)` is fit-width or fit-page; zoom buttons step by ×1.25 and clamp to the range
-- [ ] T040 [P] [US4] Widget-test zoom controls in test/widget/reader_zoom_test.dart: the bottom bar has "Zoom in" and "Zoom out" buttons on Android and web (target platform overrides) that call the controller (FR-016); Ctrl + `=` / `-` zoom; choosing Fit page in settings applies to all books and is saved (FR-021); reopening a book starts at the normal view (zoom not restored)
+- [X] T039 [P] [US4] Unit-test zoom limits in test/unit/document/zoom_range_test.dart: for a page size and view size, the minimum is the scale that fits the whole page and the maximum is 5× the fit-width scale (FR-018); `normalScale(fit)` is fit-width or fit-page; zoom buttons step by ×1.25 and clamp to the range
+- [X] T040 [P] [US4] Widget-test zoom controls in test/widget/reader_zoom_test.dart: the bottom bar has "Zoom in" and "Zoom out" buttons on Android and web (target platform overrides) that call the controller (FR-016); Ctrl + `=` / `-` zoom; choosing Fit page in settings applies to all books and is saved (FR-021); reopening a book starts at the normal view (zoom not restored)
 
 ### Implementation for User Story 4
 
-- [ ] T041 [P] [US4] Implement `zoomRange`, `normalScale` and `zoomStep` in lib/features/reader/domain/zoom_range.dart; make T039 pass
-- [ ] T042 [US4] In lib/core/document/pdf/pdf_document_view.dart and pdf_view_controller.dart set `minScale` / `maxScale` from `zoomRange`, compute the initial zoom from the fit (`calculateInitialZoom`), keep pinch and Ctrl / Cmd + wheel enabled, implement `zoomIn` / `zoomOut` around the view centre and the `zoom` getter (1.0 = normal view)
-- [ ] T043 [US4] Add the zoom buttons to lib/features/reader/ui/reader_bars.dart, the zoom shortcuts to reader_shortcuts.dart, and the fit choice (Fit width / Fit page, for all books via `ReaderRepository.setFit`) to settings_sheet.dart; make T040 pass
+- [X] T041 [P] [US4] Implement `zoomRange`, `normalScale` and `zoomStep` in lib/core/document/zoom_range.dart; make T039 pass
+- [X] T042 [US4] In lib/core/document/pdf/pdf_document_view.dart and pdf_view_controller.dart set `minScale` / `maxScale` from `zoomRange`, compute the initial zoom from the fit (`calculateInitialZoom`), keep pinch and Ctrl / Cmd + wheel enabled, implement `zoomIn` / `zoomOut` around the view centre and the `zoom` getter (1.0 = normal view)
+- [X] T043 [US4] Add the zoom buttons to lib/features/reader/ui/reader_bars.dart, the zoom shortcuts to reader_shortcuts.dart, and the fit choice (Fit width / Fit page, for all books via `ReaderRepository.setFit`) to settings_sheet.dart; make T040 pass
 
 **Checkpoint**: All P1 stories (US1–US4) are done: a releasable reader. Run quickstart 1–13 on the S24 and Chrome.
 

@@ -113,6 +113,7 @@ lib/
 │   │   ├── reading_position.dart         # page + offset within the page (research R4)
 │   │   ├── paged_snap.dart               # swipe → turn / snap back; continuous step
 │   │   ├── page_unavailable.dart         # placeholder for a page that can't be shown
+│   │   ├── zoom_range.dart               # zoom limits relative to the normal view
 │   │   └── pdf/
 │   │       ├── pdf_document_format.dart  # + loadOutline/loadLinks/loadPageText/renderPageImage
 │   │       ├── pdf_document_view.dart    # PdfViewer setup for both modes, filters, highlights
@@ -130,7 +131,6 @@ lib/
         │   ├── page_number_input.dart
         │   ├── jump_back.dart
         │   ├── outline.dart              # current chapter
-        │   ├── zoom_range.dart
         │   ├── auto_hide.dart
         │   ├── reader_theme.dart         # colour matrices (R5)
         │   └── text_search.dart          # folding, index map, snippets, streaming (R6)
