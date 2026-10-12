@@ -2,6 +2,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
@@ -13,7 +15,11 @@ import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
 import '../../library/ui/password_dialog.dart';
 import '../data/reader_repository.dart';
+import '../domain/auto_hide.dart';
+import '../domain/tap_zones.dart';
 import '../progress_saver.dart';
+import 'reader_bars.dart';
+import 'tap_detector.dart';
 
 /// View builders per format id. Overridden in tests.
 final documentViewFactoriesProvider = Provider<Map<String, DocumentViewFactory>>(
@@ -45,6 +51,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   ReaderPreference _prefs =
       const ReaderPreference(id: 1, theme: ReadingTheme.light, fit: PageFit.fitWidth);
   StreamSubscription<ReaderPreference>? _prefsSub;
+  final _controls = AutoHide();
 
   // Read once: the saver still writes while the screen is being disposed.
   late final ReaderRepository _repo = ref.read(readerRepositoryProvider);
@@ -53,8 +60,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void initState() {
     super.initState();
     _repo;
+    _controls.addListener(_controlsChanged);
+    _setSystemBars(visible: false);
     _open();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _controls.screenReaderOn = MediaQuery.accessibleNavigationOf(context);
+  }
+
+  void _controlsChanged() {
+    _setSystemBars(visible: _controls.visible);
+    setState(() {});
+  }
+
+  /// On phones and tablets the system bars come and go with the reader's (FR-004).
+  void _setSystemBars({required bool visible}) => SystemChrome.setEnabledSystemUIMode(
+      visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky);
 
   Future<void> _open() async {
     final library = ref.read(libraryRepositoryProvider);
@@ -129,6 +153,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   @override
   void dispose() {
+    _controls
+      ..removeListener(_controlsChanged)
+      ..dispose();
+    _setSystemBars(visible: true);
     _prefsSub?.cancel();
     _saver?.dispose();
     _view?.dispose();
@@ -140,7 +168,39 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final pageChanged = position.page != _position.page;
     _position = position;
     _saver?.positionChanged(position);
-    if (pageChanged && mounted) setState(() {});
+    if (pageChanged && mounted) {
+      setState(() {});
+      // FR-040: screen-reader users hear where they are.
+      SemanticsService.sendAnnouncement(View.of(context),
+          'Page ${position.page} of ${_doc!.pageCount}', Directionality.of(context));
+    }
+  }
+
+  void _onTap(Offset global, Offset local, double viewWidth) {
+    final view = _view!;
+    final point = view.pagePointAt(global);
+    final action = classifyTap(x: local.dx, viewWidth: viewWidth, pagePoint: point);
+    switch (action) {
+      case ToggleControls():
+        _controls.toggle();
+      case PreviousPage():
+        view.previous();
+      case NextPage():
+        view.next();
+      case FollowLink():
+        break; // User Story 5.
+    }
+  }
+
+  void _back() => Navigator.of(context).maybePop();
+
+  Future<void> _jumpTo(int page) async {
+    await _view!.goTo(ReadingPosition(page, 0));
+  }
+
+  BarColors get _barColors {
+    final scheme = Theme.of(context).colorScheme;
+    return BarColors(background: scheme.surfaceContainer, foreground: scheme.onSurface);
   }
 
   ReaderViewConfig _config() => ReaderViewConfig(
@@ -159,8 +219,57 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       return const Scaffold(
           body: Center(child: CircularProgressIndicator(semanticsLabel: 'Opening book')));
     }
+    final colors = _barColors;
     return Scaffold(
-      body: _factory!.build(doc, controller: _view!, config: _config()),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) => TapDetector(
+                movement: _view,
+                onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
+                child: _factory!.build(doc, controller: _view!, config: _config()),
+              ),
+            ),
+          ),
+          IgnorePointer(
+            key: const ValueKey('reader-controls'),
+            ignoring: !_controls.visible,
+            child: ExcludeSemantics(
+              excluding: !_controls.visible,
+              child: AnimatedOpacity(
+                opacity: _controls.visible ? 1 : 0,
+                duration: const Duration(milliseconds: 150),
+                child: Listener(
+                  // Any touch on the bars counts as using them (FR-003).
+                  onPointerDown: (_) => _controls.interacted(),
+                  behavior: HitTestBehavior.translucent,
+                  child: Column(
+                    children: [
+                      ReaderTopBar(
+                        title: _book?.title ?? '',
+                        colors: colors,
+                        onBack: _back,
+                      ),
+                      const Spacer(),
+                      ReaderBottomBar(
+                        page: _position.page,
+                        pageCount: doc.pageCount,
+                        colors: colors,
+                        onSliderStart: _controls.hold,
+                        onSliderEnd: (page) {
+                          _controls.release();
+                          _jumpTo(page);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

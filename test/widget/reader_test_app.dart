@@ -10,6 +10,9 @@ import 'package:potha/core/document/document_format.dart';
 import 'package:potha/core/document/page_unavailable.dart';
 import 'package:potha/core/document/pdf/pdf_document_format.dart';
 import 'package:potha/features/reader/reader.dart';
+import 'package:potha/features/reader/ui/reader_screen.dart';
+
+import 'test_app.dart';
 
 class FakeReaderDocument implements ReaderDocument {
   FakeReaderDocument({
@@ -230,4 +233,31 @@ Future<void> tapView(WidgetTester tester, double fraction) async {
   final rect = tester.getRect(find.byKey(fakeViewKey));
   await tester.tapAt(Offset(rect.left + rect.width * fraction, rect.center.dy));
   await tester.pump();
+}
+
+/// Starts the app, adds a book and opens it in the reader with [doc] and a fake view.
+Future<(TestApp, FakeViewFactory)> openReader(
+  WidgetTester tester,
+  FakeReaderDocument doc, {
+  int? currentPage,
+  Future<void> Function(TestApp app)? before,
+}) async {
+  final view = FakeViewFactory();
+  final app = TestApp(overrides: readerOverrides(doc, view));
+  await app.pump(tester);
+  await seedBook(tester, app.db,
+      id: 'b1', title: 'Moby-Dick', pageCount: doc.pageCount, currentPage: currentPage);
+  await before?.call(app);
+  final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+  navigator.push(MaterialPageRoute<void>(builder: (_) => const ReaderScreen(bookId: 'b1')));
+  await settleReal(tester);
+  await tester.pump(const Duration(milliseconds: 500));
+  return (app, view);
+}
+
+/// Unmounts the reader and app, letting every timer finish.
+Future<void> closeReader(WidgetTester tester, TestApp app) async {
+  await tester.pump(const Duration(seconds: 5));
+  await settleReal(tester);
+  await app.dispose(tester);
 }
