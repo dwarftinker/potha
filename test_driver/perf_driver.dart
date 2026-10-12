@@ -1,12 +1,13 @@
-// Summarises the timelines recorded by integration_test/scroll_perf_test.dart and fails
-// if more than 1% of frames take longer than 16 ms to build or rasterise (SC-003).
+// Summarises the timelines recorded by the perf tests (scroll_perf_test.dart for 001,
+// reader_perf_test.dart and reader_open_timing_test.dart for 002) and fails if more than
+// 1% of frames take longer than 16 ms to build or rasterise (001 SC-003, 002 SC-003).
 import 'package:flutter_driver/flutter_driver.dart' as driver;
 import 'package:integration_test/integration_test_driver.dart';
 
 Future<void> main() => integrationDriver(
       responseDataCallback: (data) async {
         if (data == null) return;
-        for (final key in ['grid_scroll', 'list_scroll']) {
+        for (final key in data.keys.where((k) => data[k] is Map<String, dynamic>)) {
           final timeline = driver.Timeline.fromJson(data[key] as Map<String, dynamic>);
           final summary = driver.TimelineSummary.summarize(timeline);
           await summary.writeTimelineToFile(key, pretty: true, includeSummary: true);

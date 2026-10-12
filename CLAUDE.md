@@ -11,6 +11,10 @@ with GitHub Spec Kit.
   mobile Chrome; 77 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac),
   T077 (upstream pdfrx issue, needs approval). See
   `specs/001-library-and-import/checklists/verification.md`.
+- Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`: all eight stories
+  pass host tests (unit, widget, and widget tests with real PDFium). Not yet verified on
+  the Galaxy S24 or in a browser; the device tests (T070–T072) are written but not run.
+  See `specs/002-pdf-reader/tasks.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -34,6 +38,9 @@ with GitHub Spec Kit.
 | Sync | Later (Supabase or Firebase) | Out of scope for v0.1. |
 
 | PDF metadata | Own pure-Dart reader (`lib/core/document/pdf/pdf_metadata_reader.dart`) | pdfrx has no title/author API. Replace when pdfrx adds one (T077). |
+| Reader view | pdfrx `PdfViewer` with our own page layouts: pages pre-scaled to the view, so zoom 1.0 is the normal view (fit width or fit page). Paged mode: one slot per page, pdfrx panning off, our `PagedDragHandler` slides and snaps (pdfrx has no paging) | specs/002-pdf-reader/research.md R2 |
+| Taps | Our `TapDetector` (raw pointer `Listener`, no gesture arena) wraps the view; pdfrx's taps and link handling are off | pdfrx's page `GestureDetector` always waits for a double tap (up to 300 ms). 003's tap-to-define should use the same detector |
+| Dark / sepia | Colour matrix over the page layer (dark: invert + hue-rotate 180°, keeps hues). Highlights are painted inside it in pre-inverted colours | pdfrx exposes no colour-scheme rendering; FR-028 reworded. Upstream request drafted in specs/002-pdf-reader/upstream-request.md (not posted) |
 | Web resources | Bundle CanvasKit and the Roboto font; build with `tool/build_web.sh` (`--no-web-resources-cdn`) | Otherwise every web load calls Google's CDN (privacy, offline). |
 
 Core abstraction: a format-agnostic `ReaderDocument` interface (pages, text at a position,
@@ -51,10 +58,10 @@ progress depend only on the interface.
    `specs/001-library-and-import/quickstart.md`).
 4. **PDFs are fixed layout.** No reflow or font resizing for PDFs; reflow comes with EPUB.
 5. **Tap-to-word latency on web.** In the spike, a tap took about 300 ms to yield the word
-   via pdfrx `selectWord` on mobile Chrome, which uses the whole lookup budget. The tap
-   recogniser also waits for a possible double tap first. Address in the 003 plan: cache
-   page text and hit-test characters ourselves, disable double-tap on the reader, and
-   measure natively on Android.
+   via pdfrx `selectWord` on mobile Chrome, which uses the whole lookup budget. 002 removed
+   the double-tap wait (`TapDetector`) and added `ReaderDocument.loadPageText` with
+   per-character rects. For 003: cache page text, hit-test characters ourselves with
+   `DocumentViewController.pagePointAt`, and measure natively on Android.
 6. **No iOS testing.** There is no Mac, iOS device or cloud CI, so iOS (and mobile Safari)
    is not verified. The constitution (v2.0.0) keeps iOS as a target but drops it from the
    merge gate.
@@ -84,6 +91,11 @@ tool/build_web.sh                    # release web build
 flutter test integration_test -d <android-device>
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/scroll_perf_test.dart -d <android-device>   # SC-003 frame budget
+python3 tool/make_fixtures.py --reader     # 002 reader fixtures (+ build/fixtures/long_2000.pdf)
+flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
+  --target=integration_test/reader_perf_test.dart -d <android-device>        # 002 SC-002/3/4
+flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
+  --target=integration_test/reader_open_timing_test.dart -d <android-device> # 002 SC-001/6/7
 ```
 
 - Mobile web needs a secure context for OPFS: `adb reverse tcp:8080 tcp:8080` and open
@@ -102,6 +114,13 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
 - Device tests must feed imports the way the platform does (files through `XFile`,
   which gives `Stream<Uint8List>`), not only bytes in memory; that gap hid an
   Android-only import hang.
+- Widget tests with real pdfrx (`test/widget/pdf_view_test.dart`): animated moves only
+  advance while the test pumps, so start them with `unawaited(...)` and then pump.
+- Reader widget tests use fakes from `test/widget/reader_test_app.dart`; popping the
+  reader needs several 100 ms pumps before the screen is disposed (`leaveReader`).
+- Formatting: `dart format -l 100` (the project's line width).
+- Pinned on purpose: `wakelock_plus` 1.8.0 (revisit after 2026-10-13) and
+  `package_info_plus` 10.2.1 (revisit after 2026-10-15), both under two weeks old.
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
   while declaring ^4.0.9). Revisit after 2026-10-25.
 
@@ -133,6 +152,11 @@ Once per project: `/speckit.constitution`. Then, for each feature:
 
 ## Next steps
 
-1. Decide on the web follow-ups in `verification.md`: a service worker for offline
+1. Verify 002 on the Galaxy S24 and in Chrome (desktop and phone): run the device tests
+   (T070–T072) and quickstart scenarios 1–33 (T076), check the wake lock in Chrome (T075),
+   and record results in `specs/002-pdf-reader/checklists/verification.md`.
+2. Approve or edit the upstream pdfrx request (`specs/002-pdf-reader/upstream-request.md`,
+   covers 001 T077 and 002 T077) before it is posted.
+3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline
    reloads, and bundling Noto fonts for non-Latin titles.
-2. Start feature 002 (PDF reader) with `/speckit.specify` and `002-pdf-reader.md`.
+4. Then feature 003 (dictionary lookup) with `/speckit.specify` and `003-dictionary-lookup.md`.
