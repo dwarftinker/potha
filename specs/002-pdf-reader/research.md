@@ -82,7 +82,12 @@ two weeks old.
   - dark: "invert lightness, keep hue". This is an inversion followed by a 180° hue
     rotation, remapped so paper becomes #1E1E1E and ink #E0E0E0. Colours keep their hue,
     so a red stays red and a blue sky stays blue.
-  Search highlights and link markers are painted above the filter in theme colours.
+  The filter wraps the whole viewer, so anything pdfrx paints, including search
+  highlights, is recoloured too. Highlights are therefore painted inside the viewer in a
+  colour pre-transformed by the inverse of the theme's matrix, so that after the filter
+  they show as the intended highlight colour. Dark's matrix is invertible. Sepia's maps
+  into a narrower range, so its highlight colour is picked from that range, a warm amber
+  that sepia leaves almost unchanged.
 - **Known limit**: a colour matrix cannot tell a photo from the page. In dark, colour
   photos keep their hues but their light and dark areas swap, and greyscale photos look
   inverted. FR-028 ("never shown as negatives") cannot be fully met this way.
@@ -115,8 +120,10 @@ two weeks old.
   (EPUB will reuse it). pdfrx's searcher is PDF-specific and matches case but not accents.
   The pure-Dart part (folding, index mapping, snippets) is unit tested first.
 - **Scanned books (FR-034)**: when search opens, sample up to 20 pages spread through the
-  book. If none has text, show "This book has no searchable text". If some do, search
-  normally and skip textless pages.
+  book. If none has text, show "This book has no searchable text" with a "Search anyway"
+  action, because text may exist on pages not sampled. If some do, search normally and
+  skip textless pages. A full search that finds no text on any page shows the same
+  message.
 
 ## R7. Table of contents and links
 

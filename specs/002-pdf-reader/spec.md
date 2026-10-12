@@ -377,7 +377,8 @@ the slider and contents cover most needs.
   is still running).
 - **FR-033**: Starting a new search or closing search MUST stop the previous search.
 - **FR-034**: If no page in the book has text, search MUST say the book has no searchable
-  text instead of searching.
+  text instead of searching. The check may sample pages; the message then offers "Search
+  anyway" in case text exists on pages not sampled.
 
 **Thumbnails**
 
