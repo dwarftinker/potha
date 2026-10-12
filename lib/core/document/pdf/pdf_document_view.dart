@@ -163,7 +163,8 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           panEnabled: !_paged,
           normalizeMatrix: _paged ? _normalize : null,
           margin: 0,
-          backgroundColor: config.backgroundColor,
+          // The theme filter would recolour the background too; it is painted below.
+          backgroundColor: Colors.transparent,
           sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
             minScale: range.min,
             maxScale: range.max,
@@ -184,13 +185,20 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           ],
         ),
       );
-      if (!_paged) return viewer;
+      final filter = config.pageFilter;
+      // Pages are recoloured for the reading theme (research R5). Everything pdfrx
+      // paints is inside the filter, so highlight colours are chosen to come out right.
+      final themed = ColoredBox(
+        color: config.backgroundColor,
+        child: filter == null ? viewer : ColorFiltered(colorFilter: filter, child: viewer),
+      );
+      if (!_paged) return themed;
       return Listener(
         onPointerDown: _drag.onDown,
         onPointerMove: _drag.onMove,
         onPointerUp: _drag.onUp,
         onPointerCancel: _drag.onCancel,
-        child: viewer,
+        child: themed,
       );
     });
   }

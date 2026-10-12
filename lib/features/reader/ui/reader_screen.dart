@@ -10,6 +10,7 @@ import '../../../core/db/app_database.dart';
 import '../../../core/document/document_format.dart';
 import '../../../core/document/pdf/pdf_document_format.dart';
 import '../../../core/document/pdf/pdf_document_view.dart';
+import '../../../core/platform/keep_awake.dart';
 import '../../../core/platform/link_opener.dart';
 import '../../../core/secure/password_store.dart';
 import '../../../core/storage/book_file_store.dart';
@@ -18,6 +19,7 @@ import '../../library/ui/password_dialog.dart';
 import '../data/reader_repository.dart';
 import '../domain/auto_hide.dart';
 import '../domain/jump_back.dart';
+import '../domain/reader_theme.dart';
 import '../domain/tap_zones.dart';
 import '../progress_saver.dart';
 import 'contents_sheet.dart';
@@ -73,18 +75,29 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   // Read once: the saver still writes while the screen is being disposed.
   late final ReaderRepository _repo = ref.read(readerRepositoryProvider);
+  late final KeepAwake _keepAwake = ref.read(keepAwakeProvider);
+
+  /// A context below the reader's theme, for its sheets and dialogs.
+  BuildContext? _themed;
+  BuildContext get _ui => _themed ?? context;
 
   @override
   void initState() {
     super.initState();
     _repo;
+    // The screen stays on while a book is open in the foreground (FR-029).
+    _keepAwake.enable();
     _controls.addListener(_controlsChanged);
     _jumpBack.addListener(_rebuild);
     _setSystemBars(visible: false);
     _lifecycle = AppLifecycleListener(
       // The system may end the app while it is in the background (FR-011).
-      onHide: () => _saver?.flush(),
+      onHide: () {
+        _saver?.flush();
+        _keepAwake.disable();
+      },
       onPause: () => _saver?.flush(),
+      onShow: _keepAwake.enable,
     );
     _open();
   }
@@ -186,6 +199,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _keepAwake.disable();
     _jumpBack.dispose();
     _controls
       ..removeListener(_controlsChanged)
@@ -251,7 +265,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         await _jump(ReadingPosition(page, 0));
       case WebLink(:final uri):
         var open = false;
-        await _withControlsHeld(() async => open = await confirmWebLink(context, uri));
+        await _withControlsHeld(() async => open = await confirmWebLink(_ui, uri));
         if (open) await ref.read(linkOpenerProvider).open(uri);
     }
   }
@@ -268,13 +282,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   Future<void> _openGoToPage() => _withControlsHeld(() async {
-    final page = await showGoToPageDialog(context, pageCount: _doc!.pageCount);
+    final page = await showGoToPageDialog(_ui, pageCount: _doc!.pageCount);
     if (page != null) await _jump(ReadingPosition(page, 0));
   });
 
   Future<void> _openContents() => _withControlsHeld(() async {
     final page = await showContentsSheet(
-      context,
+      _ui,
       outline: _outline ??= _doc!.loadOutline(),
       currentPage: _position.page,
     );
@@ -301,10 +315,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _openSettings() => _withControlsHeld(
     () => showReaderSettings(
-      context,
+      _ui,
       initial: ReaderSettings(mode: _mode, fit: _prefs.fit, theme: _prefs.theme),
       onMode: _setMode,
       onFit: _repo.setFit,
+      onTheme: _repo.setTheme,
     ),
   );
 
@@ -319,17 +334,43 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     leave: _back,
   );
 
-  BarColors get _barColors {
-    final scheme = Theme.of(context).colorScheme;
-    return BarColors(background: scheme.surfaceContainer, foreground: scheme.onSurface);
-  }
+  ReaderTheme get _theme => ReaderTheme.of(_prefs.theme);
 
-  ReaderViewConfig _config() => ReaderViewConfig(
-    mode: _mode,
-    fit: _prefs.fit,
-    initialPosition: _start,
-    onPositionChanged: _onPositionChanged,
-  );
+  BarColors get _barColors =>
+      BarColors(background: _theme.barBackground, foreground: _theme.barForeground);
+
+  /// Sheets and dialogs follow the reading theme too.
+  ThemeData _themeData(ThemeData app) => switch (_prefs.theme) {
+    ReadingTheme.light => app,
+    ReadingTheme.dark => ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: app.colorScheme.primary,
+        brightness: Brightness.dark,
+      ),
+    ),
+    ReadingTheme.sepia => app.copyWith(
+      colorScheme: app.colorScheme.copyWith(
+        brightness: Brightness.light,
+        surface: _theme.barBackground,
+        surfaceContainerLow: _theme.barBackground,
+        onSurface: _theme.barForeground,
+      ),
+    ),
+  };
+
+  ReaderViewConfig _config() {
+    final theme = _theme;
+    return ReaderViewConfig(
+      mode: _mode,
+      fit: _prefs.fit,
+      initialPosition: _start,
+      onPositionChanged: _onPositionChanged,
+      pageFilter: theme.pageFilter,
+      backgroundColor: theme.background,
+      highlightColor: theme.highlightPaintColor,
+      activeHighlightColor: theme.activeHighlightPaintColor,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -343,106 +384,115 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
     final colors = _barColors;
     final view = _view!;
-    return Scaffold(
-      body: ReaderShortcuts(
-        handlers: _keys,
-        continuous: _mode == PageMode.continuous,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Semantics(
-                key: const ValueKey('reader-page-view'),
-                container: true,
-                label: 'Page ${_position.page} of ${doc.pageCount}',
-                // Screen-reader users turn pages without the edge zones (FR-040).
-                customSemanticsActions: {
-                  const CustomSemanticsAction(label: 'Next page'): view.next,
-                  const CustomSemanticsAction(label: 'Previous page'): view.previous,
-                },
-                child: LayoutBuilder(
-                  builder: (context, constraints) => TapDetector(
-                    movement: view,
-                    onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
-                    child: _factory!.build(doc, controller: view, config: _config()),
-                  ),
-                ),
-              ),
-            ),
-            IgnorePointer(
-              key: const ValueKey('reader-controls'),
-              ignoring: !_controls.visible,
-              child: ExcludeSemantics(
-                excluding: !_controls.visible,
-                child: AnimatedOpacity(
-                  opacity: _controls.visible ? 1 : 0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Listener(
-                    // Any touch on the bars counts as using them (FR-003).
-                    onPointerDown: (_) => _controls.interacted(),
-                    behavior: HitTestBehavior.translucent,
-                    child: Column(
-                      children: [
-                        ReaderTopBar(
-                          title: _book?.title ?? '',
-                          colors: colors,
-                          onBack: _back,
-                          actions: [
-                            IconButton(
-                              icon: const Icon(Icons.toc),
-                              tooltip: 'Table of contents',
-                              onPressed: _openContents,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.tune),
-                              tooltip: 'Reader settings',
-                              onPressed: _openSettings,
-                            ),
-                          ],
+    return Theme(
+      data: _themeData(Theme.of(context)),
+      child: Builder(
+        builder: (context) {
+          _themed = context;
+          return Scaffold(
+            backgroundColor: _theme.background,
+            body: ReaderShortcuts(
+              handlers: _keys,
+              continuous: _mode == PageMode.continuous,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Semantics(
+                      key: const ValueKey('reader-page-view'),
+                      container: true,
+                      label: 'Page ${_position.page} of ${doc.pageCount}',
+                      // Screen-reader users turn pages without the edge zones (FR-040).
+                      customSemanticsActions: {
+                        const CustomSemanticsAction(label: 'Next page'): view.next,
+                        const CustomSemanticsAction(label: 'Previous page'): view.previous,
+                      },
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => TapDetector(
+                          movement: view,
+                          onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
+                          child: _factory!.build(doc, controller: view, config: _config()),
                         ),
-                        const Spacer(),
-                        ReaderBottomBar(
-                          page: _position.page,
-                          pageCount: doc.pageCount,
-                          colors: colors,
-                          leading: [
-                            IconButton(
-                              icon: const Icon(Icons.zoom_out),
-                              tooltip: 'Zoom out',
-                              onPressed: view.zoomOut,
-                            ),
-                          ],
-                          trailing: [
-                            IconButton(
-                              icon: const Icon(Icons.zoom_in),
-                              tooltip: 'Zoom in',
-                              onPressed: view.zoomIn,
-                            ),
-                          ],
-                          onPageLabelTap: _openGoToPage,
-                          onSliderStart: _controls.hold,
-                          onSliderEnd: (page) {
-                            _controls.release();
-                            _jump(ReadingPosition(page, 0));
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  IgnorePointer(
+                    key: const ValueKey('reader-controls'),
+                    ignoring: !_controls.visible,
+                    child: ExcludeSemantics(
+                      excluding: !_controls.visible,
+                      child: AnimatedOpacity(
+                        opacity: _controls.visible ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Listener(
+                          // Any touch on the bars counts as using them (FR-003).
+                          onPointerDown: (_) => _controls.interacted(),
+                          behavior: HitTestBehavior.translucent,
+                          child: Column(
+                            children: [
+                              ReaderTopBar(
+                                title: _book?.title ?? '',
+                                colors: colors,
+                                onBack: _back,
+                                actions: [
+                                  IconButton(
+                                    icon: const Icon(Icons.toc),
+                                    tooltip: 'Table of contents',
+                                    onPressed: _openContents,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.tune),
+                                    tooltip: 'Reader settings',
+                                    onPressed: _openSettings,
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              ReaderBottomBar(
+                                page: _position.page,
+                                pageCount: doc.pageCount,
+                                colors: colors,
+                                leading: [
+                                  IconButton(
+                                    icon: const Icon(Icons.zoom_out),
+                                    tooltip: 'Zoom out',
+                                    onPressed: view.zoomOut,
+                                  ),
+                                ],
+                                trailing: [
+                                  IconButton(
+                                    icon: const Icon(Icons.zoom_in),
+                                    tooltip: 'Zoom in',
+                                    onPressed: view.zoomIn,
+                                  ),
+                                ],
+                                onPageLabelTap: _openGoToPage,
+                                onSliderStart: _controls.hold,
+                                onSliderEnd: (page) {
+                                  _controls.release();
+                                  _jump(ReadingPosition(page, 0));
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_jumpBack.target case final target?)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      // Above the bottom bar when it shows; near the edge otherwise.
+                      bottom: MediaQuery.paddingOf(context).bottom + (_controls.visible ? 120 : 24),
+                      child: Center(
+                        child: JumpBackChip(page: target.page, onPressed: _goBack),
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (_jumpBack.target case final target?)
-              Positioned(
-                left: 0,
-                right: 0,
-                // Above the bottom bar when it shows; near the edge otherwise.
-                bottom: MediaQuery.paddingOf(context).bottom + (_controls.visible ? 120 : 24),
-                child: Center(
-                  child: JumpBackChip(page: target.page, onPressed: _goBack),
-                ),
-              ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

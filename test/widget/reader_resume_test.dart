@@ -40,8 +40,8 @@ void main() {
     final (app, view) = await openReader(tester, FakeReaderDocument());
     await tester.pump(const Duration(seconds: 2));
     view.controller.emitPosition(const ReadingPosition(40, 0.6));
-    Navigator.of(tester.element(find.byKey(fakeViewKey))).pop();
-    await tester.pump(const Duration(seconds: 1)); // the route closes, the reader is disposed
+    // Well before the saver's 1 s timer: only disposing the reader can have saved.
+    await leaveReader(tester);
     await settleReal(tester);
     expect(await saved(tester, app), const ReadingPosition(40, 0.6));
     await closeReader(tester, app);

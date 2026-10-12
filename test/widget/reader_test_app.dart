@@ -275,3 +275,14 @@ Future<void> closeReader(WidgetTester tester, TestApp app) async {
   await settleReal(tester);
   await app.dispose(tester);
 }
+
+/// Pops the reader and pumps frame by frame until its route has closed (the closing
+/// animation needs intermediate frames), well within the saver's 1 s timer.
+Future<void> leaveReader(WidgetTester tester) async {
+  Navigator.of(tester.element(find.byKey(fakeViewKey))).pop();
+  for (var i = 0; i < 8 && find.byType(ReaderScreen, skipOffstage: false).evaluate().isNotEmpty;
+      i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(find.byType(ReaderScreen, skipOffstage: false), findsNothing);
+}
