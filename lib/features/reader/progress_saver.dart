@@ -1,7 +1,10 @@
 import 'dart:async';
 
-/// Saves the reader's current page (FR-016b) at most once per [interval], always with
-/// the latest page, and once more when disposed.
+import '../../core/document/reading_position.dart';
+
+/// Saves the reading position (002 FR-011) at most once per [interval], always with the
+/// latest position, and immediately on [flush] and [dispose]. Moves of under 1% of a
+/// page are not worth a write.
 class ProgressSaver {
   ProgressSaver({
     required this.pageCount,
@@ -11,31 +14,37 @@ class ProgressSaver {
 
   final int pageCount;
   final Duration interval;
-  final Future<void> Function(int page) save;
+  final Future<void> Function(ReadingPosition position) save;
 
   Timer? _timer;
-  int? _pending;
-  int? _saved;
+  ReadingPosition? _pending;
+  ReadingPosition? _saved;
 
-  void pageChanged(int page) {
-    _pending = page.clamp(1, pageCount);
+  void positionChanged(ReadingPosition position) {
+    _pending = ReadingPosition.clamped(position.page, position.offsetY, pageCount: pageCount);
     _timer ??= Timer(interval, () {
       _timer = null;
       _write();
     });
   }
 
-  Future<void> _write() async {
-    final page = _pending;
-    _pending = null;
-    if (page == null || page == _saved) return;
-    _saved = page;
-    await save(page);
-  }
-
-  Future<void> dispose() async {
+  /// Writes the pending position now (on leaving the book or the app going to the
+  /// background).
+  Future<void> flush() {
     _timer?.cancel();
     _timer = null;
-    await _write();
+    return _write();
   }
+
+  Future<void> _write() async {
+    final position = _pending;
+    _pending = null;
+    if (position == null) return;
+    final saved = _saved;
+    if (saved != null && saved.isNearlySameAs(position)) return;
+    _saved = position;
+    await save(position);
+  }
+
+  Future<void> dispose() => flush();
 }

@@ -110,26 +110,32 @@ lib/
 │   ├── db/app_database.dart              # schema v2: progress columns, reader_preferences
 │   ├── document/
 │   │   ├── document_format.dart          # + outline, links, page text, page image, view contract
+│   │   ├── reading_position.dart         # page + offset within the page (research R4)
 │   │   └── pdf/
 │   │       ├── pdf_document_format.dart  # + loadOutline/loadLinks/loadPageText/renderPageImage
 │   │       ├── pdf_document_view.dart    # PdfViewer setup for both modes, filters, highlights
 │   │       ├── pdf_view_controller.dart  # DocumentViewController over PdfViewerController
 │   │       └── pdf_paged_layout.dart     # horizontal layout, normalizeMatrix, snapping (R2)
-│   └── platform/keep_awake.dart          # KeepAwake interface + wakelock_plus implementation
+│   └── platform/
+│       ├── keep_awake.dart               # KeepAwake interface + wakelock_plus implementation
+│       └── link_opener.dart              # LinkOpener interface + url_launcher implementation
 └── features/
     ├── library/ui/library_screen.dart    # opens ReaderScreen (deferred) instead of BasicPageView
     └── reader/
         ├── reader.dart                   # deferred entry point (replaces basic_page_view.dart)
         ├── domain/                       # pure Dart, unit tested first
-        │   ├── reading_position.dart
         │   ├── tap_zones.dart
         │   ├── paged_snap.dart
         │   ├── page_number_input.dart
         │   ├── jump_back.dart
+        │   ├── outline.dart              # current chapter
+        │   ├── zoom_range.dart
         │   ├── auto_hide.dart
         │   ├── reader_theme.dart         # colour matrices (R5)
         │   └── text_search.dart          # folding, index map, snippets, streaming (R6)
-        ├── data/reader_repository.dart   # position, page mode, preferences
+        ├── data/
+        │   ├── reader_repository.dart    # position, page mode, preferences
+        │   └── thumbnail_cache.dart
         ├── progress_saver.dart           # now saves ReadingPosition
         └── ui/
             ├── reader_screen.dart        # session, lifecycle, wake lock, system bars

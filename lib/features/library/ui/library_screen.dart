@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
-import '../../reader/basic_page_view.dart' deferred as reader;
+import '../../reader/reader.dart' deferred as reader;
 import '../data/library_repository.dart';
 import '../import/import_controller.dart';
 import '../import/import_service.dart';
@@ -125,8 +125,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   bool _openingReader = false;
 
-  /// Opens a book in the basic page view (FR-016). The reader is a deferred library so
-  /// the web library screen loads without it (research R10).
+  /// Opens a book in the reader (FR-016, feature 002). The reader is a deferred library
+  /// so the web library screen loads without it (research R10).
   Future<void> _openBook(String bookId) async {
     unawaited(ref.read(libraryRepositoryProvider).markOpened(bookId));
     setState(() => _openingReader = true);
@@ -137,7 +137,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
     if (!mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => reader.buildBasicPageView(bookId)),
+      MaterialPageRoute<void>(builder: (_) => reader.buildReader(bookId)),
     );
   }
 

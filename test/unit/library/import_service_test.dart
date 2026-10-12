@@ -20,7 +20,7 @@ import 'package:potha/features/library/import/import_source.dart';
 //   "%PDF-locked:<password>"    needs <password>
 //   anything not starting %PDF- fails sniff
 
-class FakeDoc implements ReaderDocument {
+class FakeDoc extends Fake implements ReaderDocument {
   FakeDoc(this.title, this.usedPassword);
   final String? title;
   @override

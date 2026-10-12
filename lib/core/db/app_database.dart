@@ -1,5 +1,10 @@
 import 'package:drift/drift.dart';
 
+import '../document/document_format.dart' show PageFit, PageMode;
+import 'app_database.steps.dart';
+
+export '../document/document_format.dart' show PageFit, PageMode;
+
 part 'app_database.g.dart';
 
 /// A book the reader has imported. See specs/001-library-and-import/data-model.md.
@@ -60,6 +65,15 @@ class ReadingProgress extends Table {
       integer().check(currentPage.isBiggerOrEqualValue(1))();
   DateTimeColumn get updatedAt => dateTime()();
 
+  /// Fraction of the page height at the top of the view, 0–1 (002 research R4).
+  RealColumn get pageOffset => real()
+      .withDefault(const Constant(0.0))
+      // ignore: recursive_getters
+      .check(pageOffset.isBetweenValues(0.0, 1.0))();
+
+  /// Null means the default, paged (002 FR-009).
+  TextColumn get pageMode => textEnum<PageMode>().nullable()();
+
   @override
   Set<Column> get primaryKey => {bookId};
 }
@@ -72,9 +86,9 @@ enum ViewMode { grid, list }
 class LibraryPreferences extends Table {
   IntColumn get id => integer()();
   TextColumn get sortOrder => textEnum<SortOrder>()
-      .withDefault(Constant(SortOrder.recentlyOpened.name))();
+      .withDefault(const Constant('recentlyOpened'))();
   TextColumn get viewMode =>
-      textEnum<ViewMode>().withDefault(Constant(ViewMode.grid.name))();
+      textEnum<ViewMode>().withDefault(const Constant('grid'))();
   BoolColumn get webStorageNoticeShown =>
       boolean().withDefault(const Constant(false))();
 
@@ -82,12 +96,26 @@ class LibraryPreferences extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Books, BookCovers, ReadingProgress, LibraryPreferences])
+enum ReadingTheme { light, dark, sepia }
+
+/// A single row (id = 1) with the reader's choices for all books (002).
+class ReaderPreferences extends Table {
+  IntColumn get id => integer()();
+  TextColumn get theme =>
+      textEnum<ReadingTheme>().withDefault(const Constant('light'))();
+  TextColumn get fit => textEnum<PageFit>().withDefault(const Constant('fitWidth'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(
+    tables: [Books, BookCovers, ReadingProgress, LibraryPreferences, ReaderPreferences])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,7 +123,18 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           await into(libraryPreferences)
               .insert(LibraryPreferencesCompanion.insert(id: const Value(1)));
+          await into(readerPreferences)
+              .insert(ReaderPreferencesCompanion.insert(id: const Value(1)));
         },
+        onUpgrade: stepByStep(
+          from1To2: (m, schema) async {
+            // 002 reader: position within the page, page mode, reader preferences.
+            await m.addColumn(schema.readingProgress, schema.readingProgress.pageOffset);
+            await m.addColumn(schema.readingProgress, schema.readingProgress.pageMode);
+            await m.createTable(schema.readerPreferences);
+            await customStatement('INSERT INTO reader_preferences (id) VALUES (1)');
+          },
+        ),
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },

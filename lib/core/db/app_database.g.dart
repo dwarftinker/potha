@@ -1042,8 +1042,36 @@ class $ReadingProgressTable extends ReadingProgress
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _pageOffsetMeta = const VerificationMeta(
+    'pageOffset',
+  );
   @override
-  List<GeneratedColumn> get $columns => [bookId, currentPage, updatedAt];
+  late final GeneratedColumn<double> pageOffset = GeneratedColumn<double>(
+    'page_offset',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(pageOffset).isBetweenValues(0.0, 1.0),
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<PageMode?, String> pageMode =
+      GeneratedColumn<String>(
+        'page_mode',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<PageMode?>($ReadingProgressTable.$converterpageModen);
+  @override
+  List<GeneratedColumn> get $columns => [
+    bookId,
+    currentPage,
+    updatedAt,
+    pageOffset,
+    pageMode,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1083,6 +1111,12 @@ class $ReadingProgressTable extends ReadingProgress
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('page_offset')) {
+      context.handle(
+        _pageOffsetMeta,
+        pageOffset.isAcceptableOrUnknown(data['page_offset']!, _pageOffsetMeta),
+      );
+    }
     return context;
   }
 
@@ -1104,6 +1138,16 @@ class $ReadingProgressTable extends ReadingProgress
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      pageOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}page_offset'],
+      )!,
+      pageMode: $ReadingProgressTable.$converterpageModen.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}page_mode'],
+        ),
+      ),
     );
   }
 
@@ -1111,6 +1155,11 @@ class $ReadingProgressTable extends ReadingProgress
   $ReadingProgressTable createAlias(String alias) {
     return $ReadingProgressTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<PageMode, String, String> $converterpageMode =
+      const EnumNameConverter<PageMode>(PageMode.values);
+  static JsonTypeConverter2<PageMode?, String?, String?> $converterpageModen =
+      JsonTypeConverter2.asNullable($converterpageMode);
 }
 
 class ReadingProgressData extends DataClass
@@ -1120,10 +1169,18 @@ class ReadingProgressData extends DataClass
   /// 1-based; 1 ≤ currentPage ≤ pageCount (enforced by the repository).
   final int currentPage;
   final DateTime updatedAt;
+
+  /// Fraction of the page height at the top of the view, 0–1 (002 research R4).
+  final double pageOffset;
+
+  /// Null means the default, paged (002 FR-009).
+  final PageMode? pageMode;
   const ReadingProgressData({
     required this.bookId,
     required this.currentPage,
     required this.updatedAt,
+    required this.pageOffset,
+    this.pageMode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1131,6 +1188,12 @@ class ReadingProgressData extends DataClass
     map['book_id'] = Variable<String>(bookId);
     map['current_page'] = Variable<int>(currentPage);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['page_offset'] = Variable<double>(pageOffset);
+    if (!nullToAbsent || pageMode != null) {
+      map['page_mode'] = Variable<String>(
+        $ReadingProgressTable.$converterpageModen.toSql(pageMode),
+      );
+    }
     return map;
   }
 
@@ -1139,6 +1202,10 @@ class ReadingProgressData extends DataClass
       bookId: Value(bookId),
       currentPage: Value(currentPage),
       updatedAt: Value(updatedAt),
+      pageOffset: Value(pageOffset),
+      pageMode: pageMode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pageMode),
     );
   }
 
@@ -1151,6 +1218,10 @@ class ReadingProgressData extends DataClass
       bookId: serializer.fromJson<String>(json['bookId']),
       currentPage: serializer.fromJson<int>(json['currentPage']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      pageOffset: serializer.fromJson<double>(json['pageOffset']),
+      pageMode: $ReadingProgressTable.$converterpageModen.fromJson(
+        serializer.fromJson<String?>(json['pageMode']),
+      ),
     );
   }
   @override
@@ -1160,6 +1231,10 @@ class ReadingProgressData extends DataClass
       'bookId': serializer.toJson<String>(bookId),
       'currentPage': serializer.toJson<int>(currentPage),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'pageOffset': serializer.toJson<double>(pageOffset),
+      'pageMode': serializer.toJson<String?>(
+        $ReadingProgressTable.$converterpageModen.toJson(pageMode),
+      ),
     };
   }
 
@@ -1167,10 +1242,14 @@ class ReadingProgressData extends DataClass
     String? bookId,
     int? currentPage,
     DateTime? updatedAt,
+    double? pageOffset,
+    Value<PageMode?> pageMode = const Value.absent(),
   }) => ReadingProgressData(
     bookId: bookId ?? this.bookId,
     currentPage: currentPage ?? this.currentPage,
     updatedAt: updatedAt ?? this.updatedAt,
+    pageOffset: pageOffset ?? this.pageOffset,
+    pageMode: pageMode.present ? pageMode.value : this.pageMode,
   );
   ReadingProgressData copyWithCompanion(ReadingProgressCompanion data) {
     return ReadingProgressData(
@@ -1179,6 +1258,10 @@ class ReadingProgressData extends DataClass
           ? data.currentPage.value
           : this.currentPage,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      pageOffset: data.pageOffset.present
+          ? data.pageOffset.value
+          : this.pageOffset,
+      pageMode: data.pageMode.present ? data.pageMode.value : this.pageMode,
     );
   }
 
@@ -1187,37 +1270,48 @@ class ReadingProgressData extends DataClass
     return (StringBuffer('ReadingProgressData(')
           ..write('bookId: $bookId, ')
           ..write('currentPage: $currentPage, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('pageOffset: $pageOffset, ')
+          ..write('pageMode: $pageMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(bookId, currentPage, updatedAt);
+  int get hashCode =>
+      Object.hash(bookId, currentPage, updatedAt, pageOffset, pageMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ReadingProgressData &&
           other.bookId == this.bookId &&
           other.currentPage == this.currentPage &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.pageOffset == this.pageOffset &&
+          other.pageMode == this.pageMode);
 }
 
 class ReadingProgressCompanion extends UpdateCompanion<ReadingProgressData> {
   final Value<String> bookId;
   final Value<int> currentPage;
   final Value<DateTime> updatedAt;
+  final Value<double> pageOffset;
+  final Value<PageMode?> pageMode;
   final Value<int> rowid;
   const ReadingProgressCompanion({
     this.bookId = const Value.absent(),
     this.currentPage = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.pageOffset = const Value.absent(),
+    this.pageMode = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReadingProgressCompanion.insert({
     required String bookId,
     required int currentPage,
     required DateTime updatedAt,
+    this.pageOffset = const Value.absent(),
+    this.pageMode = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : bookId = Value(bookId),
        currentPage = Value(currentPage),
@@ -1226,12 +1320,16 @@ class ReadingProgressCompanion extends UpdateCompanion<ReadingProgressData> {
     Expression<String>? bookId,
     Expression<int>? currentPage,
     Expression<DateTime>? updatedAt,
+    Expression<double>? pageOffset,
+    Expression<String>? pageMode,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (bookId != null) 'book_id': bookId,
       if (currentPage != null) 'current_page': currentPage,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (pageOffset != null) 'page_offset': pageOffset,
+      if (pageMode != null) 'page_mode': pageMode,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1240,12 +1338,16 @@ class ReadingProgressCompanion extends UpdateCompanion<ReadingProgressData> {
     Value<String>? bookId,
     Value<int>? currentPage,
     Value<DateTime>? updatedAt,
+    Value<double>? pageOffset,
+    Value<PageMode?>? pageMode,
     Value<int>? rowid,
   }) {
     return ReadingProgressCompanion(
       bookId: bookId ?? this.bookId,
       currentPage: currentPage ?? this.currentPage,
       updatedAt: updatedAt ?? this.updatedAt,
+      pageOffset: pageOffset ?? this.pageOffset,
+      pageMode: pageMode ?? this.pageMode,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1262,6 +1364,14 @@ class ReadingProgressCompanion extends UpdateCompanion<ReadingProgressData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (pageOffset.present) {
+      map['page_offset'] = Variable<double>(pageOffset.value);
+    }
+    if (pageMode.present) {
+      map['page_mode'] = Variable<String>(
+        $ReadingProgressTable.$converterpageModen.toSql(pageMode.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1274,6 +1384,8 @@ class ReadingProgressCompanion extends UpdateCompanion<ReadingProgressData> {
           ..write('bookId: $bookId, ')
           ..write('currentPage: $currentPage, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('pageOffset: $pageOffset, ')
+          ..write('pageMode: $pageMode, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1303,7 +1415,7 @@ class $LibraryPreferencesTable extends LibraryPreferences
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: false,
-        defaultValue: Constant(SortOrder.recentlyOpened.name),
+        defaultValue: const Constant('recentlyOpened'),
       ).withConverter<SortOrder>($LibraryPreferencesTable.$convertersortOrder);
   @override
   late final GeneratedColumnWithTypeConverter<ViewMode, String> viewMode =
@@ -1313,7 +1425,7 @@ class $LibraryPreferencesTable extends LibraryPreferences
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: false,
-        defaultValue: Constant(ViewMode.grid.name),
+        defaultValue: const Constant('grid'),
       ).withConverter<ViewMode>($LibraryPreferencesTable.$converterviewMode);
   static const VerificationMeta _webStorageNoticeShownMeta =
       const VerificationMeta('webStorageNoticeShown');
@@ -1605,6 +1717,264 @@ class LibraryPreferencesCompanion extends UpdateCompanion<LibraryPreference> {
   }
 }
 
+class $ReaderPreferencesTable extends ReaderPreferences
+    with TableInfo<$ReaderPreferencesTable, ReaderPreference> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReaderPreferencesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ReadingTheme, String> theme =
+      GeneratedColumn<String>(
+        'theme',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('light'),
+      ).withConverter<ReadingTheme>($ReaderPreferencesTable.$convertertheme);
+  @override
+  late final GeneratedColumnWithTypeConverter<PageFit, String> fit =
+      GeneratedColumn<String>(
+        'fit',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('fitWidth'),
+      ).withConverter<PageFit>($ReaderPreferencesTable.$converterfit);
+  @override
+  List<GeneratedColumn> get $columns => [id, theme, fit];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reader_preferences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReaderPreference> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReaderPreference map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReaderPreference(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      theme: $ReaderPreferencesTable.$convertertheme.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}theme'],
+        )!,
+      ),
+      fit: $ReaderPreferencesTable.$converterfit.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}fit'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $ReaderPreferencesTable createAlias(String alias) {
+    return $ReaderPreferencesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<ReadingTheme, String, String> $convertertheme =
+      const EnumNameConverter<ReadingTheme>(ReadingTheme.values);
+  static JsonTypeConverter2<PageFit, String, String> $converterfit =
+      const EnumNameConverter<PageFit>(PageFit.values);
+}
+
+class ReaderPreference extends DataClass
+    implements Insertable<ReaderPreference> {
+  final int id;
+  final ReadingTheme theme;
+  final PageFit fit;
+  const ReaderPreference({
+    required this.id,
+    required this.theme,
+    required this.fit,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['theme'] = Variable<String>(
+        $ReaderPreferencesTable.$convertertheme.toSql(theme),
+      );
+    }
+    {
+      map['fit'] = Variable<String>(
+        $ReaderPreferencesTable.$converterfit.toSql(fit),
+      );
+    }
+    return map;
+  }
+
+  ReaderPreferencesCompanion toCompanion(bool nullToAbsent) {
+    return ReaderPreferencesCompanion(
+      id: Value(id),
+      theme: Value(theme),
+      fit: Value(fit),
+    );
+  }
+
+  factory ReaderPreference.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReaderPreference(
+      id: serializer.fromJson<int>(json['id']),
+      theme: $ReaderPreferencesTable.$convertertheme.fromJson(
+        serializer.fromJson<String>(json['theme']),
+      ),
+      fit: $ReaderPreferencesTable.$converterfit.fromJson(
+        serializer.fromJson<String>(json['fit']),
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'theme': serializer.toJson<String>(
+        $ReaderPreferencesTable.$convertertheme.toJson(theme),
+      ),
+      'fit': serializer.toJson<String>(
+        $ReaderPreferencesTable.$converterfit.toJson(fit),
+      ),
+    };
+  }
+
+  ReaderPreference copyWith({int? id, ReadingTheme? theme, PageFit? fit}) =>
+      ReaderPreference(
+        id: id ?? this.id,
+        theme: theme ?? this.theme,
+        fit: fit ?? this.fit,
+      );
+  ReaderPreference copyWithCompanion(ReaderPreferencesCompanion data) {
+    return ReaderPreference(
+      id: data.id.present ? data.id.value : this.id,
+      theme: data.theme.present ? data.theme.value : this.theme,
+      fit: data.fit.present ? data.fit.value : this.fit,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReaderPreference(')
+          ..write('id: $id, ')
+          ..write('theme: $theme, ')
+          ..write('fit: $fit')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, theme, fit);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReaderPreference &&
+          other.id == this.id &&
+          other.theme == this.theme &&
+          other.fit == this.fit);
+}
+
+class ReaderPreferencesCompanion extends UpdateCompanion<ReaderPreference> {
+  final Value<int> id;
+  final Value<ReadingTheme> theme;
+  final Value<PageFit> fit;
+  const ReaderPreferencesCompanion({
+    this.id = const Value.absent(),
+    this.theme = const Value.absent(),
+    this.fit = const Value.absent(),
+  });
+  ReaderPreferencesCompanion.insert({
+    this.id = const Value.absent(),
+    this.theme = const Value.absent(),
+    this.fit = const Value.absent(),
+  });
+  static Insertable<ReaderPreference> custom({
+    Expression<int>? id,
+    Expression<String>? theme,
+    Expression<String>? fit,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (theme != null) 'theme': theme,
+      if (fit != null) 'fit': fit,
+    });
+  }
+
+  ReaderPreferencesCompanion copyWith({
+    Value<int>? id,
+    Value<ReadingTheme>? theme,
+    Value<PageFit>? fit,
+  }) {
+    return ReaderPreferencesCompanion(
+      id: id ?? this.id,
+      theme: theme ?? this.theme,
+      fit: fit ?? this.fit,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (theme.present) {
+      map['theme'] = Variable<String>(
+        $ReaderPreferencesTable.$convertertheme.toSql(theme.value),
+      );
+    }
+    if (fit.present) {
+      map['fit'] = Variable<String>(
+        $ReaderPreferencesTable.$converterfit.toSql(fit.value),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReaderPreferencesCompanion(')
+          ..write('id: $id, ')
+          ..write('theme: $theme, ')
+          ..write('fit: $fit')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1615,6 +1985,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $LibraryPreferencesTable libraryPreferences =
       $LibraryPreferencesTable(this);
+  late final $ReaderPreferencesTable readerPreferences =
+      $ReaderPreferencesTable(this);
   late final Index booksLastOpenedAt = Index(
     'books_last_opened_at',
     'CREATE INDEX books_last_opened_at ON books (last_opened_at)',
@@ -1636,6 +2008,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     bookCovers,
     readingProgress,
     libraryPreferences,
+    readerPreferences,
     booksLastOpenedAt,
     booksAddedAt,
     booksSortTitle,
@@ -2469,6 +2842,8 @@ typedef $$ReadingProgressTableCreateCompanionBuilder =
       required String bookId,
       required int currentPage,
       required DateTime updatedAt,
+      Value<double> pageOffset,
+      Value<PageMode?> pageMode,
       Value<int> rowid,
     });
 typedef $$ReadingProgressTableUpdateCompanionBuilder =
@@ -2476,6 +2851,8 @@ typedef $$ReadingProgressTableUpdateCompanionBuilder =
       Value<String> bookId,
       Value<int> currentPage,
       Value<DateTime> updatedAt,
+      Value<double> pageOffset,
+      Value<PageMode?> pageMode,
       Value<int> rowid,
     });
 
@@ -2529,6 +2906,17 @@ class $$ReadingProgressTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get pageOffset => $composableBuilder(
+    column: $table.pageOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PageMode?, PageMode, String> get pageMode =>
+      $composableBuilder(
+        column: $table.pageMode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   $$BooksTableFilterComposer get bookId {
     final $$BooksTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2572,6 +2960,16 @@ class $$ReadingProgressTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get pageOffset => $composableBuilder(
+    column: $table.pageOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pageMode => $composableBuilder(
+    column: $table.pageMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$BooksTableOrderingComposer get bookId {
     final $$BooksTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2612,6 +3010,14 @@ class $$ReadingProgressTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<double> get pageOffset => $composableBuilder(
+    column: $table.pageOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PageMode?, String> get pageMode =>
+      $composableBuilder(column: $table.pageMode, builder: (column) => column);
 
   $$BooksTableAnnotationComposer get bookId {
     final $$BooksTableAnnotationComposer composer = $composerBuilder(
@@ -2670,11 +3076,15 @@ class $$ReadingProgressTableTableManager
                 Value<String> bookId = const Value.absent(),
                 Value<int> currentPage = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<double> pageOffset = const Value.absent(),
+                Value<PageMode?> pageMode = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReadingProgressCompanion(
                 bookId: bookId,
                 currentPage: currentPage,
                 updatedAt: updatedAt,
+                pageOffset: pageOffset,
+                pageMode: pageMode,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2682,11 +3092,15 @@ class $$ReadingProgressTableTableManager
                 required String bookId,
                 required int currentPage,
                 required DateTime updatedAt,
+                Value<double> pageOffset = const Value.absent(),
+                Value<PageMode?> pageMode = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReadingProgressCompanion.insert(
                 bookId: bookId,
                 currentPage: currentPage,
                 updatedAt: updatedAt,
+                pageOffset: pageOffset,
+                pageMode: pageMode,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2959,6 +3373,181 @@ typedef $$LibraryPreferencesTableProcessedTableManager =
       LibraryPreference,
       PrefetchHooks Function()
     >;
+typedef $$ReaderPreferencesTableCreateCompanionBuilder =
+    ReaderPreferencesCompanion Function({
+      Value<int> id,
+      Value<ReadingTheme> theme,
+      Value<PageFit> fit,
+    });
+typedef $$ReaderPreferencesTableUpdateCompanionBuilder =
+    ReaderPreferencesCompanion Function({
+      Value<int> id,
+      Value<ReadingTheme> theme,
+      Value<PageFit> fit,
+    });
+
+class $$ReaderPreferencesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReaderPreferencesTable> {
+  $$ReaderPreferencesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ReadingTheme, ReadingTheme, String>
+  get theme => $composableBuilder(
+    column: $table.theme,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PageFit, PageFit, String> get fit =>
+      $composableBuilder(
+        column: $table.fit,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$ReaderPreferencesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReaderPreferencesTable> {
+  $$ReaderPreferencesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get theme => $composableBuilder(
+    column: $table.theme,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fit => $composableBuilder(
+    column: $table.fit,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReaderPreferencesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReaderPreferencesTable> {
+  $$ReaderPreferencesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ReadingTheme, String> get theme =>
+      $composableBuilder(column: $table.theme, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<PageFit, String> get fit =>
+      $composableBuilder(column: $table.fit, builder: (column) => column);
+}
+
+class $$ReaderPreferencesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReaderPreferencesTable,
+          ReaderPreference,
+          $$ReaderPreferencesTableFilterComposer,
+          $$ReaderPreferencesTableOrderingComposer,
+          $$ReaderPreferencesTableAnnotationComposer,
+          $$ReaderPreferencesTableCreateCompanionBuilder,
+          $$ReaderPreferencesTableUpdateCompanionBuilder,
+          (
+            ReaderPreference,
+            BaseReferences<
+              _$AppDatabase,
+              $ReaderPreferencesTable,
+              ReaderPreference
+            >,
+          ),
+          ReaderPreference,
+          PrefetchHooks Function()
+        > {
+  $$ReaderPreferencesTableTableManager(
+    _$AppDatabase db,
+    $ReaderPreferencesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReaderPreferencesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReaderPreferencesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReaderPreferencesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<ReadingTheme> theme = const Value.absent(),
+            Value<PageFit> fit = const Value.absent(),
+          }) => ReaderPreferencesCompanion(id: id, theme: theme, fit: fit),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<ReadingTheme> theme = const Value.absent(),
+                Value<PageFit> fit = const Value.absent(),
+              }) => ReaderPreferencesCompanion.insert(
+                id: id,
+                theme: theme,
+                fit: fit,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReaderPreferencesTable, ReaderPreference>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReaderPreferencesTable,
+                    ReaderPreference
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReaderPreferencesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReaderPreferencesTable,
+      ReaderPreference,
+      $$ReaderPreferencesTableFilterComposer,
+      $$ReaderPreferencesTableOrderingComposer,
+      $$ReaderPreferencesTableAnnotationComposer,
+      $$ReaderPreferencesTableCreateCompanionBuilder,
+      $$ReaderPreferencesTableUpdateCompanionBuilder,
+      (
+        ReaderPreference,
+        BaseReferences<
+          _$AppDatabase,
+          $ReaderPreferencesTable,
+          ReaderPreference
+        >,
+      ),
+      ReaderPreference,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2971,4 +3560,6 @@ class $AppDatabaseManager {
       $$ReadingProgressTableTableManager(_db, _db.readingProgress);
   $$LibraryPreferencesTableTableManager get libraryPreferences =>
       $$LibraryPreferencesTableTableManager(_db, _db.libraryPreferences);
+  $$ReaderPreferencesTableTableManager get readerPreferences =>
+      $$ReaderPreferencesTableTableManager(_db, _db.readerPreferences);
 }

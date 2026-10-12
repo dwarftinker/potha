@@ -44,6 +44,7 @@ Rules:
 
 ```dart
 abstract interface class DocumentViewFactory {
+  DocumentViewController createController();
   Widget build(ReaderDocument doc, {
     required DocumentViewController controller,
     required ReaderViewConfig config,
@@ -57,10 +58,10 @@ class ReaderViewConfig {
   final ColorFilter? pageFilter;       // theme recolouring (research R5), null = light
   final List<PageHighlight> highlights; // search matches: page + normalised rects
   final ValueChanged<ReadingPosition> onPositionChanged;
-  final ValueChanged<ReaderTap> onTap;  // instant taps (research R3)
 }
 
-abstract interface class DocumentViewController {
+abstract interface class DocumentViewController implements Listenable {
+  // Notifies listeners when the view moves (position or zoom).
   ReadingPosition get position;
   double get zoom;                       // 1.0 = the normal view (fit)
   Future<void> goTo(ReadingPosition position, {bool animate = true});
@@ -83,7 +84,7 @@ Behaviour the PDF implementation must guarantee:
 
 | # | Behaviour | Spec |
 |---|---|---|
-| 1 | `onTap` fires on pointer up with no wait for a second tap; pdfrx tap handling (including links) is disabled | FR-017, R3 |
+| 1 | The view handles no taps itself: pdfrx tap handling (including links) is disabled. The reader's `TapDetector` wraps the view and fires on pointer up, using `pagePointAt` and the controller's change notifications (no tap while the view moves) | FR-017, R3 |
 | 2 | `next` / `previous` in paged mode turn exactly one page and show the new page from its top-left corner, at the same relative zoom; at the first and last page they do nothing | FR-007, FR-010, FR-021 |
 | 3 | `next` / `previous` in continuous mode scroll one view height, less one line of overlap (about 1/24 of the view height) | FR-007 |
 | 4 | Changing `mode` or `fit` and resizing or rotating keep `position` | FR-015 |

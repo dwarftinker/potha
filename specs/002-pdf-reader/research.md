@@ -15,6 +15,11 @@ two weeks old.
   custom page layouts (`layoutPages`, `normalizeMatrix`).
 - **Rationale**: FR-016 to FR-020 and SC-002 to SC-004 are what pdfrx's viewer is built
   for. Writing our own tiled renderer would be large and risky (Principle VIII).
+- **Damaged pages (found while writing fixtures)**: PDFium draws a page with broken
+  content, or an empty MediaBox, as a blank page; it does not fail. A page tree whose
+  page count is wrong makes pdfrx refuse the whole file, which is FR-038's "can't be
+  opened" path. So FR-037's placeholder is for renders that fail at run time (errors,
+  out of memory), and it is tested with a fake document.
 - **Alternatives considered**: our own viewer from `PdfPage.render` tiles (full control,
   weeks of work); Syncfusion PDF Viewer (commercial licence, still the CLAUDE.md fallback).
 
