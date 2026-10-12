@@ -33,7 +33,7 @@ book files in the app support directory (Android, iOS) or OPFS with an IndexedDB
 **Testing**: flutter_test (unit and widget), integration_test (Android device, Chrome),
 fixture PDFs in `test/fixtures/`
 
-**Target Platform**: Android 7+ (API 24), iOS 13+ (built but not verified), web (current
+**Target Platform**: Android 7+ (API 24), iOS 15+ (Flutter 3.47 minimum; built but not verified), web (current
 Chrome, Edge, Firefox, Safari; secure context required)
 
 **Project Type**: Cross-platform mobile and web app (single Flutter project)
