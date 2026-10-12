@@ -74,3 +74,18 @@ Run on Android and on web (desktop Chrome and Chrome on the phone). iOS is not v
 | 31 | System text size 200%; TalkBack through the controls | Labels read; nothing clipped; contrast AA in all themes (FR-040) |
 | 32 | Performance runs (commands above) | SC-001 < 2 s for 20 and 2,000 pages; SC-002 < 200 ms; SC-003 ≤ 1% late frames; SC-004 < 500 ms; SC-006 < 1 s; SC-007 < 2 s |
 | 33 | Hands-on: someone new opens the contents and switches to dark without help | SC-009 |
+
+## Web build measurements (T075, 2026-10-12)
+
+Release build (`tool/build_web.sh`), sizes compressed with `gzip -9`, compared with `main`
+(001) built the same way.
+
+| File | 001 | 002 | Change |
+|---|---|---|---|
+| `main.dart.js` (first load) | 945 KB | 959 KB | +14 KB: web plugin registration for wakelock_plus and url_launcher |
+| `main.dart.js_1.part.js` (reader, deferred) | 102 KB | 145 KB | +43 KB: the full reader |
+
+- The first load stays at about 3.9 MB; the reader and pdfium.wasm still load only when a
+  book is first imported or opened (research R13).
+- The Wake Lock API needs a secure context: it works over `https://` and
+  `http://localhost` (`adb reverse` for the phone), as OPFS already requires.
