@@ -248,23 +248,49 @@ class _BookGrid extends ConsumerWidget {
   final List<BookSummary> books;
   final void Function(String bookId) onOpen;
 
+  static const _maxTileWidth = 180.0;
+  static const _spacing = 8.0;
+  static const _padding = 12.0;
+
+  /// Height of a tile's text block (two-line title, author, progress) at the reader's
+  /// text size, so tiles grow instead of overflowing (FR-025).
+  static double _textHeight(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle? style, int lines) {
+      final size = style?.fontSize ?? 14;
+      return scaler.scale(size) * (style?.height ?? 1.4) * lines;
+    }
+
+    return line(t.titleSmall, 2) + line(t.bodySmall, 1) + 2 + line(t.labelSmall, 1);
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) => GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 180,
-          childAspectRatio: 0.48,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: books.length,
-        itemBuilder: (context, i) => BookTile(
-          key: ValueKey(books[i].id),
-          book: books[i],
-          onTap: () => onOpen(books[i].id),
-          onLongPress: () => showBookActions(context, ref, books[i]),
-          menu: BookMenuButton(book: books[i]),
-        ),
+  Widget build(BuildContext context, WidgetRef ref) => LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth - 2 * _padding;
+          final columns = ((width + _spacing) / (_maxTileWidth + _spacing)).ceil().clamp(1, 12);
+          final tileWidth = (width - _spacing * (columns - 1)) / columns;
+          // Tile padding + cover (2:3) + gap + text, plus a little slack.
+          final tileHeight = 12 + (tileWidth - 12) * 3 / 2 + 6 + _textHeight(context) + 8;
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(_padding, _padding, _padding, 96),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisExtent: tileHeight,
+              crossAxisSpacing: _spacing,
+              mainAxisSpacing: _spacing,
+            ),
+            itemCount: books.length,
+            itemBuilder: (context, i) => BookTile(
+              key: ValueKey(books[i].id),
+              book: books[i],
+              onTap: () => onOpen(books[i].id),
+              onLongPress: () => showBookActions(context, ref, books[i]),
+              menu: BookMenuButton(book: books[i]),
+            ),
+          );
+        },
       );
 }
 

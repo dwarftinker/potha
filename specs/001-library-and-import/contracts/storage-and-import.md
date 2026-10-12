@@ -36,7 +36,8 @@ abstract interface class BookFileStore {
 abstract interface class ImportService {
   /// Imports [files] one after another. A failure in one does not stop the rest.
   /// Emits progress events; the final event carries one ImportResult per file.
-  Stream<ImportEvent> importFiles(List<ImportSource> files);
+  Stream<ImportEvent> importFiles(List<ImportSource> files,
+      {required AskImportPassword askPassword});
 
   /// Cancels the file currently being imported and skips the rest of the batch.
   void cancel();
@@ -52,7 +53,7 @@ file picker, Open with / Share to, and drag and drop all produce `ImportSource`s
 |---|---|---|
 | `started(index, total, fileName)` | each file begins | nothing yet |
 | `progress(fraction?)` | while copying | progress bar and Cancel button, shown only after 1 s (FR-008) |
-| `needsPassword(fileName, retry)` | encrypted PDF | password dialog |
+| (callback) `askPassword(fileName, retry:)` | encrypted PDF | password dialog; progress is hidden while it is open |
 | `finished(results)` | batch done | single file: open or snackbar; several files: summary (FR-009) |
 
 ### Rules

@@ -24,16 +24,21 @@ void main() {
     final pdf = buildPdf(title: title, pages: 2);
     final before = (await repo.allBookIds()).length;
 
-    await importer.importSources([sourceFromBytes('book.pdf', pdf)], askPassword: noPassword);
+    await importer.importSources([
+      sourceFromBytes('book.pdf', pdf),
+    ], askPassword: noPassword);
     await pumpUntil(tester, find.text(title));
     expect((await repo.allBookIds()).length, before + 1);
 
-    await importer.importSources([sourceFromBytes('copy.pdf', pdf)], askPassword: noPassword);
+    await importer.importSources([
+      sourceFromBytes('copy.pdf', pdf),
+    ], askPassword: noPassword);
     await pumpUntil(tester, find.text('Already in your library'));
     expect((await repo.allBookIds()).length, before + 1);
 
-    await importer.importSources(
-        [sourceFromBytes('notes.pdf', buildPdf().sublist(5))], askPassword: noPassword);
+    await importer.importSources([
+      sourceFromBytes('notes.pdf', buildPdf().sublist(5)),
+    ], askPassword: noPassword);
     await pumpUntil(tester, find.text('This file is not a PDF.'));
     expect((await repo.allBookIds()).length, before + 1);
     expect(find.byType(LinearProgressIndicator), findsNothing);

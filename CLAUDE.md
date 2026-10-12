@@ -7,10 +7,12 @@ with GitHub Spec Kit.
 
 ## Status
 
-- Planning done. No app code yet.
+- Feature 001 (library and import) is implemented on branch `001-library-and-import`,
+  76 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac), T077 (upstream
+  pdfrx issue, needs approval), T078 (Android and mobile-browser verification, needs the
+  Android SDK). See `specs/001-library-and-import/checklists/verification.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
-- The pdfrx spike is done (results below). Next: `/speckit.specify` for feature 001.
 - The root folder holds the prompts drafted for Spec Kit:
   - `Constitution.md` – input for `/speckit.constitution`
   - `001-library-and-import.md`, `002-pdf-reader.md`, `003-dictionary-lookup.md` – input
@@ -31,6 +33,9 @@ with GitHub Spec Kit.
 | Dictionary | Bundled offline SQLite (WordNet plus a lemma table); optional online fallback | Offline-first, lookup under 300 ms. Wiktionary data is CC BY-SA and needs attribution. |
 | Sync | Later (Supabase or Firebase) | Out of scope for v0.1. |
 
+| PDF metadata | Own pure-Dart reader (`lib/core/document/pdf/pdf_metadata_reader.dart`) | pdfrx has no title/author API. Replace when pdfrx adds one (T077). |
+| Web resources | Bundle CanvasKit and the Roboto font; build with `tool/build_web.sh` (`--no-web-resources-cdn`) | Otherwise every web load calls Google's CDN (privacy, offline). |
+
 Core abstraction: a format-agnostic `ReaderDocument` interface (pages, text at a position,
 word at a point, search). PDF now and EPUB later implement it. Dictionary, highlights and
 progress depend only on the interface.
@@ -41,9 +46,9 @@ progress depend only on the interface.
    Flutter web in mobile browsers (pdfrx issue #180). Spike: no conflict in mobile Chrome
    (see below).
 2. **Scanned PDFs** have no text layer. Detect this and tell the user. OCR comes later.
-3. **Web bundle size.** PDFium WASM makes first load heavy. Lazy-load the reader route.
-   Spike measured about 5–6 MB gzipped on first load (CanvasKit 2–2.8 MB, pdfium.wasm
-   2.3 MB, main.dart.js 0.7 MB).
+3. **Web bundle size.** First load is about 3.9 MB gzipped; pdfium.wasm (2.3 MB) and the
+   deferred reader load only on first import or open (measured 2026-10-12, see
+   `specs/001-library-and-import/quickstart.md`).
 4. **PDFs are fixed layout.** No reflow or font resizing for PDFs; reflow comes with EPUB.
 5. **Tap-to-word latency on web.** In the spike, a tap took about 300 ms to yield the word
    via pdfrx `selectWord` on mobile Chrome, which uses the whole lookup budget. The tap
@@ -64,6 +69,31 @@ the pdfrx plan holds.
 
 Environment note: Flutter is at `~/develop/flutter/bin`, which is not on the PATH of
 non-interactive shells.
+
+## Running and testing
+
+```bash
+flutter pub get
+dart run build_runner build          # drift code generation
+python3 tool/make_fixtures.py        # test PDFs (python3 + Ghostscript); --large adds a 20 MB one
+tool/fetch_test_pdfium.sh            # PDFium for host tests that use real pdfrx (Linux x64)
+flutter test test/unit test/widget   # host tests
+flutter test --platform chrome test/web
+flutter run -d chrome --no-web-resources-cdn
+tool/build_web.sh                    # release web build
+flutter test integration_test -d <android-device>
+```
+
+- Mobile web needs a secure context for OPFS: `adb reverse tcp:8080 tcp:8080` and open
+  `http://localhost:8080` on the phone, or serve over HTTPS.
+- After changing a drift table: bump `schemaVersion`, write the migration, then run
+  `dart run drift_dev make-migrations` and
+  `dart run drift_dev schema generate drift_schemas/app_database/ test/unit/db/generated/`.
+- Widget tests: drift work must run outside fake async (`tester.runAsync`); seed with one
+  `batch`, and close the database with `tester.runAsync(db.close)` (see
+  `test/widget/test_app.dart`).
+- Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
+  while declaring ^4.0.9). Revisit after 2026-10-25.
 
 ## Roadmap
 
@@ -93,6 +123,8 @@ Once per project: `/speckit.constitution`. Then, for each feature:
 
 ## Next steps
 
-1. Run `/speckit.specify` with `001-library-and-import.md`, then continue the workflow.
-2. Install the Android SDK before implementing 001, so features can be verified on
-   Android.
+1. Install the Android SDK, then run the 001 integration tests and quickstart scenarios
+   on a device and in mobile Chrome (T078), and merge 001.
+2. Decide on the web follow-ups in `verification.md`: a service worker for offline
+   reloads, and bundling Noto fonts for non-Latin titles.
+3. Start feature 002 (PDF reader) with `/speckit.specify` and `002-pdf-reader.md`.

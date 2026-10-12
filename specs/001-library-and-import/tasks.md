@@ -213,13 +213,13 @@ on its own.
 
 **Purpose**: Accessibility, performance and verification across stories.
 
-- [ ] T073 [P] Add a seed script integration_test/seed_500_books.dart that inserts 500 books with covers into the database, and a performance test in integration_test/scroll_perf_test.dart using `traceAction` to fling-scroll the grid and list and fail if more than 1% of frames exceed 16 ms (SC-003), and to check search updates within 0.5 s (SC-004)
-- [ ] T074 [P] Accessibility pass on all library widgets under lib/features/library/ui/: every control has a semantics label or tooltip; text uses theme text styles so it scales with the system setting; verify at text scale 2.0 with no overflow in test/widget/accessibility_test.dart using `meetsGuideline(textContrastGuideline)`, `androidTapTargetGuideline` and `labeledTapTargetGuideline` in light and dark themes (FR-025)
-- [ ] T075 [P] Confirm no network access: add a test in test/unit/no_network_test.dart that runs an import and open under `HttpOverrides` throwing on any connection (FR-023, FR-026)
-- [ ] T076 [P] Measure the web build: `flutter build web --release`, record initial download size (gzipped) with and without the deferred reader in specs/001-library-and-import/quickstart.md, and confirm `pdfium.wasm` is not requested until import or open
+- [X] T073 [P] Add a seed script integration_test/seed_500_books.dart that inserts 500 books with covers into the database, and a performance test in integration_test/scroll_perf_test.dart using `traceAction` to fling-scroll the grid and list and fail if more than 1% of frames exceed 16 ms (SC-003), and to check search updates within 0.5 s (SC-004)
+- [X] T074 [P] Accessibility pass on all library widgets under lib/features/library/ui/: every control has a semantics label or tooltip; text uses theme text styles so it scales with the system setting; verify at text scale 2.0 with no overflow in test/widget/accessibility_test.dart using `meetsGuideline(textContrastGuideline)`, `androidTapTargetGuideline` and `labeledTapTargetGuideline` in light and dark themes (FR-025)
+- [X] T075 [P] Confirm no network access: add a test in test/unit/no_network_test.dart that runs an import and open under `HttpOverrides` throwing on any connection (FR-023, FR-026)
+- [X] T076 [P] Measure the web build: `flutter build web --release`, record initial download size (gzipped) with and without the deferred reader in specs/001-library-and-import/quickstart.md, and confirm `pdfium.wasm` is not requested until import or open
 - [ ] T077 [P] Open an upstream pdfrx issue (or PR) proposing a document metadata API backed by `FPDF_GetMetaText` on native and web, and link it from a TODO comment in lib/core/document/pdf/pdf_metadata_reader.dart (research R1)
 - [ ] T078 Run every quickstart.md validation scenario on an Android device and in Chrome (desktop and on an Android phone via `adb reverse`), and record the results in specs/001-library-and-import/checklists/verification.md; iOS is listed as not verified (constitution v2.0.0)
-- [ ] T079 Update CLAUDE.md: status (feature 001 implemented), how to run (build_runner, tests, mobile web via adb reverse), and the metadata-reader decision
+- [X] T079 Update CLAUDE.md: status (feature 001 implemented), how to run (build_runner, tests, mobile web via adb reverse), and the metadata-reader decision
 
 ---
 

@@ -13,13 +13,17 @@ import 'helpers.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('a book resumes at the page where the reader stopped', (tester) async {
+  testWidgets('a book resumes at the page where the reader stopped', (
+    tester,
+  ) async {
     await app.main();
     await tester.pumpAndSettle();
     final title = 'Resume ${DateTime.now().microsecondsSinceEpoch}';
-    await containerOf(tester).read(importControllerProvider.notifier).importSources(
-        [sourceFromBytes('three.pdf', buildPdf(title: title, pages: 3))],
-        askPassword: (_, {required retry}) async => null);
+    await containerOf(tester)
+        .read(importControllerProvider.notifier)
+        .importSources([
+          sourceFromBytes('three.pdf', buildPdf(title: title, pages: 3)),
+        ], askPassword: (_, {required retry}) async => null);
     await pumpUntil(tester, find.text(title));
 
     // Open, jump to the last page, go back.
@@ -39,8 +43,11 @@ void main() {
     await pumpUntil(tester, find.text('Page 3 of 3'));
     await pumpUntil(tester, find.byType(PdfViewer));
     watch.stop();
-    expect(watch.elapsed, lessThan(const Duration(seconds: 2)),
-        reason: 'Opening took ${watch.elapsedMilliseconds} ms');
+    expect(
+      watch.elapsed,
+      lessThan(const Duration(seconds: 2)),
+      reason: 'Opening took ${watch.elapsedMilliseconds} ms',
+    );
     expect(find.byType(Scaffold), findsWidgets);
   });
 }

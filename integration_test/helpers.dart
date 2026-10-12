@@ -20,7 +20,9 @@ Uint8List buildPdf({String? title, int pages = 1, int imageBytesPerPage = 0}) {
 
   List<int> ascii(String s) => latin1.encode(s);
   final rng = Random(7);
-  final font = add(ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'));
+  final font = add(
+    ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'),
+  );
   final pagesNum = objects.length + 1;
   objects.add(const []);
   final kids = <int>[];
@@ -31,20 +33,31 @@ Uint8List buildPdf({String? title, int pages = 1, int imageBytesPerPage = 0}) {
       final side = sqrt(imageBytesPerPage / 3).floor();
       final data = List<int>.generate(side * side * 3, (_) => rng.nextInt(256));
       final img = add([
-        ...ascii('<< /Type /XObject /Subtype /Image /Width $side /Height $side '
-            '/ColorSpace /DeviceRGB /BitsPerComponent 8 /Length ${data.length} >>\nstream\n'),
+        ...ascii(
+          '<< /Type /XObject /Subtype /Image /Width $side /Height $side '
+          '/ColorSpace /DeviceRGB /BitsPerComponent 8 /Length ${data.length} >>\nstream\n',
+        ),
         ...data,
         ...ascii('\nendstream'),
       ]);
       resources = '<< /Font << /F1 $font 0 R >> /XObject << /Im1 $img 0 R >>';
       ops = 'q 468 0 0 468 72 200 cm /Im1 Do Q\n$ops';
     }
-    final content = add(ascii('<< /Length ${ops.length} >>\nstream\n${ops}endstream'));
-    kids.add(add(ascii('<< /Type /Page /Parent $pagesNum 0 R /MediaBox [0 0 612 792] '
-        '/Resources $resources >> /Contents $content 0 R >>')));
+    final content = add(
+      ascii('<< /Length ${ops.length} >>\nstream\n${ops}endstream'),
+    );
+    kids.add(
+      add(
+        ascii(
+          '<< /Type /Page /Parent $pagesNum 0 R /MediaBox [0 0 612 792] '
+          '/Resources $resources >> /Contents $content 0 R >>',
+        ),
+      ),
+    );
   }
   objects[pagesNum - 1] = ascii(
-      '<< /Type /Pages /Count ${kids.length} /Kids [${kids.map((k) => '$k 0 R').join(' ')}] >>');
+    '<< /Type /Pages /Count ${kids.length} /Kids [${kids.map((k) => '$k 0 R').join(' ')}] >>',
+  );
   final catalog = add(ascii('<< /Type /Catalog /Pages $pagesNum 0 R >>'));
   final info = title == null ? null : add(ascii('<< /Title ($title) >>'));
 
@@ -62,23 +75,30 @@ Uint8List buildPdf({String? title, int pages = 1, int imageBytesPerPage = 0}) {
   for (final o in offsets) {
     out.add(ascii('${o.toString().padLeft(10, '0')} 00000 n \n'));
   }
-  out.add(ascii('trailer\n<< /Size ${objects.length + 1} /Root $catalog 0 R'
-      '${info == null ? '' : ' /Info $info 0 R'} >>\nstartxref\n$xref\n%%EOF\n'));
+  out.add(
+    ascii(
+      'trailer\n<< /Size ${objects.length + 1} /Root $catalog 0 R'
+      '${info == null ? '' : ' /Info $info 0 R'} >>\nstartxref\n$xref\n%%EOF\n',
+    ),
+  );
   return out.toBytes();
 }
 
 ImportSource sourceFromBytes(String name, Uint8List bytes) => ImportSource(
-      name: name,
-      size: bytes.length,
-      openRead: () => Stream.value(bytes),
-    );
+  name: name,
+  size: bytes.length,
+  openRead: () => Stream.value(bytes),
+);
 
 ProviderContainer containerOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
 
 /// Pumps until [finder] matches or [timeout] passes (real time, for device tests).
-Future<void> pumpUntil(WidgetTester tester, Finder finder,
-    {Duration timeout = const Duration(seconds: 20)}) async {
+Future<void> pumpUntil(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 20),
+}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 100));

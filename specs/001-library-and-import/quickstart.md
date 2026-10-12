@@ -18,7 +18,8 @@ How to run feature 001 and confirm it works. See [data-model.md](data-model.md) 
 flutter pub get
 dart run build_runner build        # drift code generation
 flutter test                       # unit and widget tests
-flutter run -d chrome              # web
+flutter run -d chrome --no-web-resources-cdn   # web (always without the CDN)
+tool/build_web.sh                  # release web build, no external requests
 flutter run -d <android-device>    # Android
 flutter test integration_test -d <android-device>
 ```
@@ -59,3 +60,23 @@ verified (constitution v2.0.0).
 | 21 | TalkBack on; system text size at maximum; dark theme | All controls announced; text scales without clipping; contrast passes (FR-025) |
 | 22 | Web: first import | One-time notice that clearing site data removes the library (FR-027) |
 | 23 | Kill the app during a large import, restart | No half-imported book; staging folder empty |
+
+## Web build measurements (T076, 2026-10-12)
+
+Release build (`tool/build_web.sh`), Chrome, sizes gzipped. Recorded with the Chrome
+DevTools Protocol: the network log on first load and after importing and opening a book.
+
+| Loaded | Files | Size |
+|---|---|---|
+| First load (library screen) | main.dart.js 923 KB, CanvasKit 2.0 MB, sqlite3.wasm 351 KB, drift worker 106 KB, Roboto 510 KB, other 11 KB | **≈ 3.9 MB** |
+| On first import or open | pdfium.wasm 2.3 MB, pdfium worker 24 KB | ≈ 2.3 MB |
+| On first open | reader (deferred `main.dart.js_1.part.js`) 100 KB | ≈ 0.1 MB |
+
+- No request leaves the app's origin (CanvasKit and fonts are bundled). Before this, every
+  load fetched CanvasKit from www.gstatic.com and Roboto from fonts.gstatic.com.
+- `pdfium.wasm` and the reader code are not requested until a PDF is imported or opened.
+- Without COOP/COEP headers, drift uses IndexedDB storage for the database; serving with
+  `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
+  lets it use OPFS (faster).
+- Not yet covered: reloading the web app while offline. There is no service worker, so the
+  app shell itself is not cached for offline use (see follow-ups in checklists/verification.md).

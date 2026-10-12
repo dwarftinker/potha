@@ -18,13 +18,22 @@ void main() {
     expect(pdf.length, greaterThan(20 * 1000 * 1000));
 
     final watch = Stopwatch()..start();
-    await containerOf(tester).read(importControllerProvider.notifier).importSources(
-        [sourceFromBytes('large.pdf', pdf)],
-        askPassword: (_, {required retry}) async => null);
-    await pumpUntil(tester, find.text(title), timeout: const Duration(seconds: 10));
+    await containerOf(tester)
+        .read(importControllerProvider.notifier)
+        .importSources([
+          sourceFromBytes('large.pdf', pdf),
+        ], askPassword: (_, {required retry}) async => null);
+    await pumpUntil(
+      tester,
+      find.text(title),
+      timeout: const Duration(seconds: 10),
+    );
     watch.stop();
 
-    expect(watch.elapsed, lessThan(const Duration(seconds: 3)),
-        reason: 'Import took ${watch.elapsedMilliseconds} ms');
+    expect(
+      watch.elapsed,
+      lessThan(const Duration(seconds: 3)),
+      reason: 'Import took ${watch.elapsedMilliseconds} ms',
+    );
   });
 }
