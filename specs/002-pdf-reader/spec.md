@@ -173,7 +173,7 @@ slider, by typed page number, from the contents, and by following a link.
 ### User Story 6 - Reading themes (Priority: P2)
 
 A reader chooses light, dark or sepia. In dark and sepia, page colours are adjusted so long
-reading is comfortable, while pictures still look like themselves. The screen stays awake
+reading is comfortable, while pictures keep recognisable colours. The screen stays awake
 while reading.
 
 **Why this priority**: comfort for long and night-time sessions, after the core reading
@@ -187,7 +187,7 @@ and leave the book open longer than the device's screen timeout.
 1. **Given** the dark theme, **When** a page with black text on white is shown, **Then**
    the page appears as light text on a dark background.
 2. **Given** the dark or sepia theme, **When** a page with a colour photo is shown, **Then**
-   the photo keeps recognisable colours (it is not shown as a negative).
+   the photo keeps recognisable colours (a red stays red, a blue sky stays blue).
 3. **Given** the sepia theme, **When** a page is shown, **Then** the background is a warm
    paper tone and the text dark brown-grey.
 4. **Given** a theme was chosen, **When** the reader opens any book, **Then** that theme is
@@ -359,8 +359,9 @@ the slider and contents cover most needs.
 - **FR-027**: The reader MUST offer light, dark and sepia themes, chosen once for all books.
   The reader's controls follow the chosen theme.
 - **FR-028**: In dark and sepia, page backgrounds and text MUST be recoloured to the theme,
-  while photographs and illustrations keep recognisable colours and are never shown as
-  negatives.
+  while photographs and illustrations keep recognisable colours (their hues). In dark, a
+  photo's light and dark areas may be swapped; keeping photos exactly as printed is
+  deferred until the PDF engine supports it.
 - **FR-029**: The screen MUST stay on while a book is open in the foreground, with no idle
   limit, and return to the device's normal behaviour when the reader leaves the book or the
   app goes to the background.
@@ -454,6 +455,9 @@ the slider and contents cover most needs.
 - There is no double-tap zoom, so single taps (and tap-to-define in feature 003) never wait
   for a possible second tap. Zoom is by pinch, the zoom buttons, and Ctrl / Cmd + scroll
   on the web.
+- In the dark theme, photos keep their hues but may show light and dark swapped, and
+  black-and-white photos may look inverted. Full photo protection waits for engine support
+  (plan, Complexity Tracking).
 - Text selection is not part of this feature; it arrives with dictionary lookup (003) and
   highlights (004).
 - "Mid-range phone" is the same reference as in feature 001. iOS is a supported target but
