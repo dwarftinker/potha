@@ -29,6 +29,8 @@ void main() {
       timeout: const Duration(seconds: 10),
     );
     watch.stop();
+    // ignore: avoid_print
+    print('20 MB import: ${watch.elapsedMilliseconds} ms');
 
     expect(
       watch.elapsed,

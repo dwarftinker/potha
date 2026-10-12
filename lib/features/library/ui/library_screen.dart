@@ -285,6 +285,7 @@ class _BookGrid extends ConsumerWidget {
             itemBuilder: (context, i) => BookTile(
               key: ValueKey(books[i].id),
               book: books[i],
+              width: tileWidth,
               onTap: () => onOpen(books[i].id),
               onLongPress: () => showBookActions(context, ref, books[i]),
               menu: BookMenuButton(book: books[i]),
