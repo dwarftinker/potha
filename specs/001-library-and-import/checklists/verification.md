@@ -1,8 +1,8 @@
 # Verification: Library and Import (001)
 
 **Status**: Merged to main before the Android run (first feature). Android automated
-checks pass on a Samsung Galaxy S24 (2026-10-12); hand-run Android and mobile-browser
-scenarios are in progress. iOS is not verified.
+checks pass on a Samsung Galaxy S24 (2026-10-12); hand-run Android scenarios
+and mobile Chrome pass. iOS is not verified.
 
 ## Automated (2026-10-12, Linux host)
 
@@ -60,14 +60,15 @@ a mid-range device. Command for the perf run:
 
 ## Still to verify
 
-- [ ] All quickstart scenarios on an Android device (needs Android SDK)
-- [ ] Mobile Chrome on an Android phone via `adb reverse` (OPFS needs a secure context)
+- [x] Quickstart scenarios on an Android device (all except 23, see below)
+- [x] Mobile Chrome on an Android phone via `adb reverse` (OPFS needs a secure context)
 - [x] Integration tests: `import_test`, `import_timing_test` (SC-002), `open_resume_test`
       (constitution V: under 2 s), `scroll_perf_test` with `perf_driver` (SC-003, SC-004)
 - [x] Open with on Android, cold start (quickstart 12)
-- [ ] Share to from a real app (My Files, Gmail) on Android
-- [ ] Batch of 5 files (quickstart 9), airplane mode (19), TalkBack, maximum text size
-      and dark theme (21), kill during a large import (23)
+- [x] Share to from My Files on Android (checked by hand, 2026-10-12)
+- [x] Batch of 5 files (quickstart 9), airplane mode (19), TalkBack, maximum text size
+      and dark theme (21) (checked by hand, 2026-10-12)
+- [ ] Kill during a large import (23); covered by the startup cleanup unit tests
 - [ ] iOS: not verified (no Mac); Share Extension target (T041) not created
 
 ## Found and fixed during verification
