@@ -29,11 +29,30 @@ scenarios are in progress. iOS is not verified.
 
 | Check | Result |
 |---|---|
-| `import_test` | pass |
+| `import_test` | pass (now also imports a real file through `XFile`, and taps Cancel on a running import) |
 | `import_timing_test` (SC-002, under 3 s) | pass: 20 MB PDF in the library in 1.6–1.7 s (debug build) |
 | `open_resume_test` (constitution V, under 2 s) | pass: reopened at the saved page in 0.3 s (debug build) |
 | `scroll_perf_test` + `perf_driver` (SC-003, at most 1% of frames over 16 ms) | pass, three runs: grid 0–0.4%, list 0% |
 | Search with 500 books (SC-004, under 0.5 s) | pass: 240–280 ms |
+
+Hand-run on the release build (driven over adb, 2026-10-12):
+
+| Quickstart # | Result |
+|---|---|
+| 1 Empty state | pass |
+| 2 Metadata title and author, cover, "New" | pass |
+| 3 `my_great_book.pdf` → "my great book" | pass |
+| 4 `scan_0001.pdf` → "scan 0001"; `0001.pdf` → "Untitled book 2026-10-12" | pass |
+| 5 Same file under another name → "Already in your library" + Open | pass |
+| 6 Text file renamed .pdf → "not a PDF"; truncated PDF → "damaged" | pass |
+| 7 Wrong then right password; reopening does not ask | pass |
+| 8 Cancel the password → nothing added | pass |
+| 10 500 MB PDF: progress bar and Cancel appear | pass; the copy takes about 3 s on the S24, so Cancel is checked by `import_test` instead |
+| 12 Open with (VIEW) on a cold start | pass |
+| 14 Page 57, kill, restart → 57% in the library, reopens on page 57 | pass |
+| 15 Original file deleted → still opens | pass |
+| 16 Remove after confirming | pass |
+| 18 List view kept after restart | pass |
 
 The S24 is a flagship, not a mid-range phone, so the timing margins will be smaller on
 a mid-range device. Command for the perf run:
@@ -45,12 +64,26 @@ a mid-range device. Command for the perf run:
 - [ ] Mobile Chrome on an Android phone via `adb reverse` (OPFS needs a secure context)
 - [x] Integration tests: `import_test`, `import_timing_test` (SC-002), `open_resume_test`
       (constitution V: under 2 s), `scroll_perf_test` with `perf_driver` (SC-003, SC-004)
-- [ ] Open with / Share to on Android (quickstart 12)
+- [x] Open with on Android, cold start (quickstart 12)
+- [ ] Share to from a real app (My Files, Gmail) on Android
+- [ ] Batch of 5 files (quickstart 9), airplane mode (19), TalkBack, maximum text size
+      and dark theme (21), kill during a large import (23)
 - [ ] iOS: not verified (no Mac); Share Extension target (T041) not created
 
 ## Found and fixed during verification
 
 Android (2026-10-12):
+
+- **Importing from the file picker hung forever on Android.** The picker (and Open with /
+  Share to) gives a `Stream<Uint8List>`; transforming it with a `List<int>` transformer
+  threw a type error at runtime, and the error escaped the import service, so the batch
+  never finished and the spinner stayed. Tests used `List<int>` streams and missed it.
+  The stream is now re-typed first, any unexpected error fails just that file, and unit
+  and device tests cover both.
+- Sharing a file the app may not read (the sender did not grant access) crashed the app:
+  `receive_sharing_intent` opens it on the main thread without catching the
+  `SecurityException`. `MainActivity` now drops unreadable files from the intent before
+  the plugin sees it.
 
 - The app did not build for Android: `receive_sharing_intent` 1.9 requires compiling
   against API 37, Flutter's default is 36. `compileSdk` is now 37 (`targetSdk` is still
@@ -83,6 +116,9 @@ Web and host (before merge):
 
 - `desktop_drop` applies the Kotlin Gradle Plugin; Flutter warns that future versions will
   refuse to build such plugins. Upgrade or replace it when a fixed version exists.
+- `file_picker` copies each picked file into the app cache before handing it over, so a
+  500 MB book briefly takes twice its size, and that copy shows no progress. Check
+  whether the cache is cleared, and consider reading the content URI directly.
 - The release APK is 80 MB because it bundles every ABI. Build per ABI
   (`--split-per-abi`) or an app bundle for distribution.
 

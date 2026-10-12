@@ -123,12 +123,17 @@ class ImportService {
           continue;
         }
         controller.add(ImportStarted(i, files.length, file.name));
-        results.add(await _importOne(
-          file,
-          cancel: cancel,
-          askPassword: askPassword,
-          onProgress: (written) => controller.add(ImportProgress(i, written, file.size)),
-        ));
+        try {
+          results.add(await _importOne(
+            file,
+            cancel: cancel,
+            askPassword: askPassword,
+            onProgress: (written) => controller.add(ImportProgress(i, written, file.size)),
+          ));
+        } catch (_) {
+          // Never leave the batch unfinished: the UI waits for ImportFinished.
+          results.add(_failed(file.name, ImportFailure.unknown));
+        }
       }
       controller.add(ImportFinished(results));
       await controller.close();
@@ -169,7 +174,9 @@ class ImportService {
       if (format == null) throw const _NotADocument();
     }
 
-    final checked = file.openRead().transform(
+    // Re-type the chunks first: sources such as XFile.openRead give a Stream<Uint8List>,
+    // which a List<int> transformer rejects at runtime.
+    final checked = file.openRead().map<List<int>>((chunk) => chunk).transform(
           StreamTransformer<List<int>, List<int>>.fromHandlers(
             handleData: (chunk, sink) {
               total += chunk.length;

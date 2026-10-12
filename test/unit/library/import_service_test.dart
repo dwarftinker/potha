@@ -356,4 +356,30 @@ void main() {
     expect(events.whereType<ImportProgress>(), isNotEmpty);
     expect(events.last, isA<ImportFinished>());
   });
+
+  test('a source that streams Uint8List chunks is imported (Android file picker)',
+      () async {
+    final bytes = Uint8List.fromList(latin1.encode('%PDF-ok:Picked'));
+    // XFile.openRead returns a Stream<Uint8List>; Stream<List<int>> accepts it
+    // statically, but transforming it must still work at runtime.
+    final picked = ImportSource(
+      name: 'picked.pdf',
+      size: bytes.length,
+      openRead: () => Stream<Uint8List>.value(bytes),
+    );
+    final results = await run([picked]);
+    expect(results.single.outcome, ImportOutcome.added);
+  });
+
+  test('an unexpected error fails that file and the batch still finishes', () async {
+    final broken = ImportSource(
+      name: 'broken.pdf',
+      size: 10,
+      openRead: () => throw StateError('cannot read'),
+    );
+    final results = await run([broken, source('a.pdf', '%PDF-ok:A')]);
+    expect(results.map((r) => r.failure), [ImportFailure.unknown, null]);
+    expect(results.last.outcome, ImportOutcome.added);
+    expect(store.staging, isEmpty);
+  });
 }
