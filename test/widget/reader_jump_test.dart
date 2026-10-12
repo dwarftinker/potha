@@ -1,5 +1,4 @@
 // User Story 5: jump to a place (FR-022 to FR-026).
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

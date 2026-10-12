@@ -1,6 +1,5 @@
 // User Story 4: zoom (FR-016, FR-018, FR-021).
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/core/db/app_database.dart';
