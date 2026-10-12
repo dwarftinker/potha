@@ -109,16 +109,16 @@ on its own.
 
 ### Tests for User Story 2 (write first, confirm they fail) ⚠️
 
-- [ ] T045 [P] [US2] Unit-test the progress calculation in test/unit/library/progress_test.dart for FR-013: `percent = currentPage == pageCount ? 100 : floor(currentPage × 100 / pageCount)`; page 1 of 300 → 0; 150/300 → 50; 299/300 → 99; 300/300 → 100; 1/1 → 100; no progress row → label "New", else "NN%"
-- [ ] T046 [P] [US2] Widget-test the library in test/widget/library_screen_test.dart: empty library shows the empty state with explanation and an "Add book" button (FR-014); books show cover image or placeholder with title (FR-012); author shown only when present (FR-011); "New" vs "42%" labels; a newly inserted book appears without refresh (FR-015)
+- [X] T045 [P] [US2] Unit-test the progress calculation in test/unit/library/progress_test.dart for FR-013: `percent = currentPage == pageCount ? 100 : floor(currentPage × 100 / pageCount)`; page 1 of 300 → 0; 150/300 → 50; 299/300 → 99; 300/300 → 100; 1/1 → 100; no progress row → label "New", else "NN%"
+- [X] T046 [P] [US2] Widget-test the library in test/widget/library_screen_test.dart: empty library shows the empty state with explanation and an "Add book" button (FR-014); books show cover image or placeholder with title (FR-012); author shown only when present (FR-011); "New" vs "42%" labels; a newly inserted book appears without refresh (FR-015)
 
 ### Implementation for User Story 2
 
-- [ ] T047 [P] [US2] Implement `progressPercent` and `progressLabel` in lib/features/library/domain/progress.dart to pass T045, and use them when building `BookSummary.progressLabel` in lib/features/library/data/library_repository.dart (left join reading_progress)
-- [ ] T048 [P] [US2] Build the cover widget in lib/features/library/ui/book_cover.dart: loads bytes through a `coverProvider(bookId)` (`FutureProvider.family`, cached), decodes with `cacheWidth` sized to the tile, shows a placeholder (title on a tinted card) when there is no cover or decoding fails
-- [ ] T049 [P] [US2] Build the grid tile in lib/features/library/ui/book_tile.dart: cover (2:3 aspect), title (max 2 lines), author (1 line, omitted when null), progress label; one `Semantics` label "<title>, by <author>, <progress>"; respects text scaling without clipping
-- [ ] T050 [P] [US2] Build the empty state in lib/features/library/ui/empty_state.dart: short explanation ("Your library is empty. Add a PDF to start reading." plus "or drag a PDF here" on the web) and an "Add book" button using the US1 action
-- [ ] T051 [US2] Replace the placeholder list in lib/features/library/ui/library_screen.dart with a lazily built `GridView.builder` (responsive column count from screen width) of BookTiles, the empty state when there are no books, and the US1 drop zone and import UI kept in place (makes T046 pass)
+- [X] T047 [P] [US2] Implement `progressPercent` and `progressLabel` in lib/features/library/domain/progress.dart to pass T045, and use them when building `BookSummary.progressLabel` in lib/features/library/data/library_repository.dart (left join reading_progress)
+- [X] T048 [P] [US2] Build the cover widget in lib/features/library/ui/book_cover.dart: loads bytes through a `coverProvider(bookId)` (`FutureProvider.family`, cached), decodes with `cacheWidth` sized to the tile, shows a placeholder (title on a tinted card) when there is no cover or decoding fails
+- [X] T049 [P] [US2] Build the grid tile in lib/features/library/ui/book_tile.dart: cover (2:3 aspect), title (max 2 lines), author (1 line, omitted when null), progress label; one `Semantics` label "<title>, by <author>, <progress>"; respects text scaling without clipping
+- [X] T050 [P] [US2] Build the empty state in lib/features/library/ui/empty_state.dart: short explanation ("Your library is empty. Add a PDF to start reading." plus "or drag a PDF here" on the web) and an "Add book" button using the US1 action
+- [X] T051 [US2] Replace the placeholder list in lib/features/library/ui/library_screen.dart with a lazily built `GridView.builder` (responsive column count from screen width) of BookTiles, the empty state when there are no books, and the US1 drop zone and import UI kept in place (makes T046 pass)
 
 **Checkpoint**: US1 + US2 give a working bookshelf on Android and web.
 

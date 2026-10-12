@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/db/connection.dart';
+import '../domain/progress.dart' as lib_progress;
 
 /// What the library shows for one book. Carries no image bytes (SC-003).
 @immutable
@@ -26,6 +27,12 @@ class BookSummary {
   /// Null if the book has never been opened.
   final int? currentPage;
   final bool hasCover;
+
+  /// "New" or "NN%" (FR-013).
+  String get progressLabel => lib_progress.progressLabel(
+        currentPage: currentPage,
+        pageCount: pageCount,
+      );
 }
 
 class LibraryRepository {

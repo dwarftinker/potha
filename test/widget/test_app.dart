@@ -1,6 +1,8 @@
 // Shared harness for widget tests: the real app shell with in-memory storage and fakes.
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,7 @@ import 'package:potha/core/db/connection.dart';
 import 'package:potha/features/library/import/import_controller.dart';
 import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
+import 'package:potha/features/library/domain/text_fold.dart';
 import 'package:potha/features/library/ui/library_screen.dart';
 
 /// An ImportService whose behaviour each test scripts through [script].
@@ -85,6 +88,69 @@ class TestApp {
     await tester.pump(const Duration(seconds: 1));
     // Closing needs real async; it hangs inside the test's fake-async zone.
     await tester.runAsync(db.close);
+  }
+}
+
+/// A 1×1 PNG, enough to stand in for a cover.
+final onePixelPng = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44,
+  0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
+  0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60,
+  0x60, 0x60, 0xF8, 0x0F, 0x00, 0x01, 0x04, 0x01, 0x00, 0x5F, 0xE5, 0xC3, 0x4B, 0x00, 0x00,
+  0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);
+
+/// Inserts a book straight into the database (outside fake async).
+Future<void> seedBook(
+  WidgetTester tester,
+  AppDatabase db, {
+  required String id,
+  required String title,
+  String? author,
+  int pageCount = 300,
+  int? currentPage,
+  bool cover = false,
+  DateTime? addedAt,
+  DateTime? lastOpenedAt,
+}) async {
+  // One batch: a second statement would wait on drift's lock, held by the library's
+  // watch query in the fake-async zone.
+  await tester.runAsync(() => db.batch((b) {
+        b.insert(
+            db.books,
+            BooksCompanion.insert(
+              id: id,
+              format: 'pdf',
+              title: title,
+              author: Value(author),
+              sortTitle: sortTitle(title),
+              searchKey: searchKey(title, author),
+              originalFileName: '$id.pdf',
+              contentHash: 'hash-$id',
+              sizeBytes: 1000,
+              pageCount: pageCount,
+              isPasswordProtected: false,
+              addedAt: addedAt ?? DateTime.utc(2026, 10, 1),
+              lastOpenedAt: Value(lastOpenedAt),
+            ));
+        if (cover) {
+          b.insert(db.bookCovers, BookCoversCompanion.insert(bookId: id, image: onePixelPng));
+        }
+        if (currentPage != null) {
+          b.insert(
+              db.readingProgress,
+              ReadingProgressCompanion.insert(
+                  bookId: id, currentPage: currentPage, updatedAt: DateTime.utc(2026, 10, 2)));
+        }
+      }));
+  await settleReal(tester);
+}
+
+/// Lets real async work (drift queries, image decoding) finish, then rebuilds.
+Future<void> settleReal(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    await tester.pump();
   }
 }
 

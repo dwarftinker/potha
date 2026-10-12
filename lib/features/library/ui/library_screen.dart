@@ -9,7 +9,9 @@ import '../import/import_controller.dart';
 import '../import/import_service.dart';
 import '../import/import_source.dart';
 import '../import/incoming_files.dart';
+import 'book_tile.dart';
 import 'drop_zone.dart';
+import 'empty_state.dart';
 import 'import_progress.dart';
 import 'import_summary.dart';
 import 'password_dialog.dart';
@@ -114,23 +116,50 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _pickAndImport,
-        icon: const Icon(Icons.add),
-        label: const Text('Add book'),
-      ),
+      floatingActionButton: (books.value?.isNotEmpty ?? false)
+          ? FloatingActionButton.extended(
+              onPressed: _pickAndImport,
+              icon: const Icon(Icons.add),
+              label: const Text('Add book'),
+            )
+          : null,
       bottomNavigationBar: const ImportProgressBar(),
       body: DropZone(
         enabled: ref.watch(isWebProvider),
         onDrop: _onDrop,
         child: books.when(
-          data: (list) => ListView(
-            children: [for (final b in list) ListTile(title: Text(b.title))],
-          ),
+          data: (list) => list.isEmpty
+              ? EmptyLibrary(onAdd: _pickAndImport, isWeb: ref.watch(isWebProvider))
+              : _BookGrid(books: list, onOpen: _openBook),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Could not load the library: $e')),
         ),
       ),
     );
   }
+}
+
+/// Cover grid; the column count follows the screen width.
+class _BookGrid extends StatelessWidget {
+  const _BookGrid({required this.books, required this.onOpen});
+
+  final List<BookSummary> books;
+  final void Function(String bookId) onOpen;
+
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 180,
+          childAspectRatio: 0.48,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+        ),
+        itemCount: books.length,
+        itemBuilder: (context, i) => BookTile(
+          key: ValueKey(books[i].id),
+          book: books[i],
+          onTap: () => onOpen(books[i].id),
+        ),
+      );
 }
