@@ -132,18 +132,18 @@ on its own.
 
 ### Tests for User Story 3 (write first, confirm they fail) ⚠️
 
-- [ ] T052 [P] [US3] Unit-test progress saving in test/unit/library/progress_saver_test.dart: page changes are written at most once per second; the last page is flushed on dispose; `currentPage` is clamped to `1 ≤ currentPage ≤ pageCount`; `markOpened` sets `lastOpenedAt`
-- [ ] T053 [P] [US3] Write the US3 integration test in integration_test/open_resume_test.dart: import `three_pages.pdf`, open it, jump to page 3, close; assert the library shows 100% and reopening starts at page 3, with the first page rendered within 2 s of the tap (constitution V; measured with a `Stopwatch` until the page image is painted)
-- [ ] T054 [P] [US3] Widget-test opening a password-protected book in test/widget/open_protected_book_test.dart (FR-028): with a stored password the page view opens without asking; with a wrong stored password the password dialog appears and the new password replaces the stored one
+- [X] T052 [P] [US3] Unit-test progress saving in test/unit/library/progress_saver_test.dart: page changes are written at most once per second; the last page is flushed on dispose; `currentPage` is clamped to `1 ≤ currentPage ≤ pageCount`; `markOpened` sets `lastOpenedAt`
+- [X] T053 [P] [US3] Write the US3 integration test in integration_test/open_resume_test.dart: import `three_pages.pdf`, open it, jump to page 3, close; assert the library shows 100% and reopening starts at page 3, with the first page rendered within 2 s of the tap (constitution V; measured with a `Stopwatch` until the page image is painted)
+- [X] T054 [P] [US3] Widget-test opening a password-protected book in test/widget/open_protected_book_test.dart (FR-028): with a stored password the page view opens without asking; with a wrong stored password the password dialog appears and the new password replaces the stored one
 
 ### Implementation for User Story 3
 
-- [ ] T055 [US3] Add `markOpened`, `saveProgress` and `currentPage` to lib/features/library/data/library_repository.dart (upsert into reading_progress with `updatedAt`)
-- [ ] T056 [US3] Implement `ProgressSaver` in lib/features/reader/progress_saver.dart (debounce 1 s, flush on dispose, clamping) to pass T052
-- [ ] T057 [US3] Implement the PDF `DocumentViewFactory` in lib/core/document/pdf/pdf_document_view.dart: pdfrx `PdfViewer` with vertical page scroll, text selection disabled (`PdfTextSelectionParams(enabled: false)`), pinch zoom disabled (max/min scale 1), opening at `initialPage`, calling `onPageChanged` with the 1-based page
-- [ ] T058 [US3] Build the basic page view screen in lib/features/reader/basic_page_view.dart (FR-016a/b): finds the file through BookFileStore, opens it through DocumentFormat with the stored password (asking again via the password dialog if it fails, then replacing the stored one), shows a back button to the library and "page n of m", uses ProgressSaver, and shows a clear error if the file is missing; make T054 pass
-- [ ] T059 [US3] Open books from the library: tapping a BookTile calls `markOpened` and navigates to BasicPageView, imported with `deferred as reader` and `await reader.loadLibrary()` in lib/features/library/ui/library_screen.dart (research R10), showing a small progress indicator while the deferred library loads
-- [ ] T060 [US3] Make the US1 "Open" action (duplicate import and single-file snackbar) navigate to the same BasicPageView in lib/features/library/ui/import_summary.dart
+- [X] T055 [US3] Add `markOpened`, `saveProgress` and `currentPage` to lib/features/library/data/library_repository.dart (upsert into reading_progress with `updatedAt`)
+- [X] T056 [US3] Implement `ProgressSaver` in lib/features/reader/progress_saver.dart (debounce 1 s, flush on dispose, clamping) to pass T052
+- [X] T057 [US3] Implement the PDF `DocumentViewFactory` in lib/core/document/pdf/pdf_document_view.dart: pdfrx `PdfViewer` with vertical page scroll, text selection disabled (`PdfTextSelectionParams(enabled: false)`), pinch zoom disabled (max/min scale 1), opening at `initialPage`, calling `onPageChanged` with the 1-based page
+- [X] T058 [US3] Build the basic page view screen in lib/features/reader/basic_page_view.dart (FR-016a/b): finds the file through BookFileStore, opens it through DocumentFormat with the stored password (asking again via the password dialog if it fails, then replacing the stored one), shows a back button to the library and "page n of m", uses ProgressSaver, and shows a clear error if the file is missing; make T054 pass
+- [X] T059 [US3] Open books from the library: tapping a BookTile calls `markOpened` and navigates to BasicPageView, imported with `deferred as reader` and `await reader.loadLibrary()` in lib/features/library/ui/library_screen.dart (research R10), showing a small progress indicator while the deferred library loads
+- [X] T060 [US3] Make the US1 "Open" action (duplicate import and single-file snackbar) navigate to the same BasicPageView in lib/features/library/ui/import_summary.dart
 
 **Checkpoint**: The P1 MVP is complete: import, see and open books with resume.
 

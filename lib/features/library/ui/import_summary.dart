@@ -31,6 +31,10 @@ void showImportSummary(BuildContext context, List<ImportResult> results,
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Text(text),
+        // With an action, snackbars stay until dismissed by default; this one is
+        // informational, so let it go after a few seconds.
+        persist: false,
+        duration: const Duration(seconds: 6),
         action: canOpen && r.bookId != null
             ? SnackBarAction(label: 'Open', onPressed: () => onOpen(r.bookId!))
             : null,

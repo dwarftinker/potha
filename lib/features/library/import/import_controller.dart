@@ -14,6 +14,10 @@ import 'import_source.dart';
 /// Whether the app runs in a browser. Overridden in tests.
 final isWebProvider = Provider<bool>((ref) => kIsWeb);
 
+/// Completes when startup storage cleanup has finished; imports wait for it so cleanup
+/// never removes a file that is being imported.
+final startupCleanupProvider = Provider<Future<void>>((ref) => Future<void>.value());
+
 final importServiceProvider = Provider<ImportService>((ref) => ImportService(
       formats: ref.watch(documentFormatsProvider),
       store: ref.watch(bookFileStoreProvider),
@@ -99,6 +103,7 @@ class ImportController extends Notifier<ImportState> {
   }
 
   Future<void> _run(List<ImportSource> sources, AskImportPassword askPassword) async {
+    await ref.read(startupCleanupProvider);
     final service = ref.read(importServiceProvider);
     if (ref.read(isWebProvider)) unawaited(ref.read(bookFileStoreProvider).requestPersistence());
 

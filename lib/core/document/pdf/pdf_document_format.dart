@@ -48,14 +48,17 @@ class PdfDocumentFormat implements DocumentFormat {
     }
 
     try {
+      // Idempotent. Done here rather than at startup so PDFium (and on the web its WASM
+      // module) loads only when a PDF is first needed (research R10).
+      await pdfrxFlutterInitialize();
       if (file.path != null) {
         final doc = await PdfDocument.openFile(file.path!, passwordProvider: provide);
-        return _PdfReaderDocument(doc, file, attempts == 0 ? null : lastPassword);
+        return PdfReaderDocument(doc, file, attempts == 0 ? null : lastPassword);
       }
       // Web: no file path; the bytes are already in browser memory (max 100 MB).
       final bytes = await file.readAll();
       final doc = await PdfDocument.openData(bytes, passwordProvider: provide);
-      return _PdfReaderDocument(doc, file, attempts == 0 ? null : lastPassword, bytes);
+      return PdfReaderDocument(doc, file, attempts == 0 ? null : lastPassword, bytes);
     } on PdfPasswordException catch (e) {
       throw DocumentOpenException(DocumentOpenFailure.passwordCancelled, e);
     } catch (e) {
@@ -64,8 +67,9 @@ class PdfDocumentFormat implements DocumentFormat {
   }
 }
 
-class _PdfReaderDocument implements ReaderDocument {
-  _PdfReaderDocument(this.document, this._file, this.usedPassword, [this._bytes]);
+/// A PDF opened through pdfrx; the page view needs the underlying [document].
+class PdfReaderDocument implements ReaderDocument {
+  PdfReaderDocument(this.document, this._file, this.usedPassword, [this._bytes]);
 
   final PdfDocument document;
   final BookFileRef _file;

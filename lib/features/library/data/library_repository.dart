@@ -95,6 +95,23 @@ class LibraryRepository {
       (_db.update(_db.libraryPreferences)..where((p) => p.id.equals(1)))
           .write(const LibraryPreferencesCompanion(webStorageNoticeShown: Value(true)));
 
+  Future<void> markOpened(String bookId, {DateTime? at}) =>
+      (_db.update(_db.books)..where((b) => b.id.equals(bookId)))
+          .write(BooksCompanion(lastOpenedAt: Value((at ?? DateTime.now()).toUtc())));
+
+  /// Saves the page where the reader last stopped (FR-016b).
+  Future<void> saveProgress(String bookId, int currentPage) =>
+      _db.into(_db.readingProgress).insertOnConflictUpdate(ReadingProgressCompanion.insert(
+            bookId: bookId,
+            currentPage: currentPage,
+            updatedAt: DateTime.now().toUtc(),
+          ));
+
+  Future<int?> currentPage(String bookId) async =>
+      (await (_db.select(_db.readingProgress)..where((p) => p.bookId.equals(bookId)))
+              .getSingleOrNull())
+          ?.currentPage;
+
   /// Inserts a book and its cover in one transaction. [beforeCommit] runs inside the
   /// transaction (e.g. moving the staged file); if it throws, nothing is inserted.
   Future<void> insertBook(

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../reader/basic_page_view.dart' deferred as reader;
 import '../data/library_repository.dart';
 import '../import/import_controller.dart';
 import '../import/import_service.dart';
@@ -79,8 +82,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Future<void> _onDrop(List<DropItem> files) async =>
       _import(await Future.wait(files.map(ImportSource.fromXFile)));
 
-  void _openBook(String bookId) {
-    // Opening books arrives with user story 3.
+  bool _openingReader = false;
+
+  /// Opens a book in the basic page view (FR-016). The reader is a deferred library so
+  /// the web library screen loads without it (research R10).
+  Future<void> _openBook(String bookId) async {
+    unawaited(ref.read(libraryRepositoryProvider).markOpened(bookId));
+    setState(() => _openingReader = true);
+    try {
+      await reader.loadLibrary();
+    } finally {
+      if (mounted) setState(() => _openingReader = false);
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => reader.buildBasicPageView(bookId)),
+    );
   }
 
   Future<void> _onImportFinished(List<ImportResult> results) async {
@@ -108,6 +125,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library'),
+        bottom: _openingReader
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator(minHeight: 2, semanticsLabel: 'Opening book'),
+              )
+            : null,
         actions: [
           IconButton(
             tooltip: 'Add book',
