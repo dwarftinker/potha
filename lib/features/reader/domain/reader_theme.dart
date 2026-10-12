@@ -34,10 +34,10 @@ class ReaderTheme {
   final Color activeHighlight;
 
   static ReaderTheme of(ReadingTheme theme) => switch (theme) {
-        ReadingTheme.light => _light,
-        ReadingTheme.sepia => _sepia,
-        ReadingTheme.dark => _dark,
-      };
+    ReadingTheme.light => _light,
+    ReadingTheme.sepia => _sepia,
+    ReadingTheme.dark => _dark,
+  };
 
   static const _light = ReaderTheme._(
     name: ReadingTheme.light,
@@ -71,9 +71,9 @@ class ReaderTheme {
 
   /// out_c = ink_c + (paper_c − ink_c) · in_c, per channel.
   static ({List<double> m, List<double> offset}) _channelRamp(Color ink, Color paper) => (
-        m: [paper.r - ink.r, 0, 0, 0, paper.g - ink.g, 0, 0, 0, paper.b - ink.b],
-        offset: [ink.r, ink.g, ink.b],
-      );
+    m: [paper.r - ink.r, 0, 0, 0, paper.g - ink.g, 0, 0, 0, paper.b - ink.b],
+    offset: [ink.r, ink.g, ink.b],
+  );
 
   /// CSS hue-rotate(180deg).
   static const _hue180 = [-0.574, 1.43, 0.144, 0.426, 0.43, 0.144, 0.426, 1.43, -0.856];
@@ -132,10 +132,10 @@ class ReaderTheme {
   }
 
   static List<double> _mul(List<double> m, List<double> v) => [
-        m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
-        m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
-        m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
-      ];
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
 
   static List<double> _inverse(List<double> m) {
     final a = m[0], b = m[1], c = m[2], d = m[3], e = m[4], f = m[5], g = m[6], h = m[7];

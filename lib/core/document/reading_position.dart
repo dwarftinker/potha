@@ -22,8 +22,7 @@ class ReadingPosition {
     required double visibleTop,
   }) {
     if (pageRect.height <= 0) return ReadingPosition(page, 0);
-    return ReadingPosition(
-        page, ((visibleTop - pageRect.top) / pageRect.height).clamp(0.0, 1.0));
+    return ReadingPosition(page, ((visibleTop - pageRect.top) / pageRect.height).clamp(0.0, 1.0));
   }
 
   final int page;

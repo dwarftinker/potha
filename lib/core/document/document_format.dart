@@ -32,11 +32,7 @@ abstract interface class DocumentFormat {
 
   /// Opens [file]. Tries [knownPassword] first, then [askPassword] if the document is
   /// encrypted. Throws [DocumentOpenException].
-  Future<ReaderDocument> open(
-    BookFileRef file, {
-    String? knownPassword,
-    AskPassword? askPassword,
-  });
+  Future<ReaderDocument> open(BookFileRef file, {String? knownPassword, AskPassword? askPassword});
 }
 
 abstract interface class ReaderDocument {
@@ -263,18 +259,17 @@ class ReaderViewConfig {
     List<PageHighlight>? highlights,
     Color? highlightColor,
     Color? activeHighlightColor,
-  }) =>
-      ReaderViewConfig(
-        mode: mode ?? this.mode,
-        fit: fit ?? this.fit,
-        initialPosition: initialPosition,
-        onPositionChanged: onPositionChanged,
-        pageFilter: clearPageFilter ? null : pageFilter ?? this.pageFilter,
-        backgroundColor: backgroundColor ?? this.backgroundColor,
-        highlights: highlights ?? this.highlights,
-        highlightColor: highlightColor ?? this.highlightColor,
-        activeHighlightColor: activeHighlightColor ?? this.activeHighlightColor,
-      );
+  }) => ReaderViewConfig(
+    mode: mode ?? this.mode,
+    fit: fit ?? this.fit,
+    initialPosition: initialPosition,
+    onPositionChanged: onPositionChanged,
+    pageFilter: clearPageFilter ? null : pageFilter ?? this.pageFilter,
+    backgroundColor: backgroundColor ?? this.backgroundColor,
+    highlights: highlights ?? this.highlights,
+    highlightColor: highlightColor ?? this.highlightColor,
+    activeHighlightColor: activeHighlightColor ?? this.activeHighlightColor,
+  );
 }
 
 /// Drives a page view. Methods do nothing until the view is ready.

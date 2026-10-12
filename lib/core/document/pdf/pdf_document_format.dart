@@ -7,8 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfrx/pdfrx.dart';
 
 import '../document_format.dart';
-import 'pdf_metadata_file_io.dart'
-    if (dart.library.js_interop) 'pdf_metadata_file_web.dart';
+import 'pdf_metadata_file_io.dart' if (dart.library.js_interop) 'pdf_metadata_file_web.dart';
 import 'pdf_metadata_reader.dart';
 
 class PdfDocumentFormat implements DocumentFormat {
@@ -146,25 +145,25 @@ class PdfReaderDocument implements ReaderDocument {
 
   /// [r] in PDF coordinates (bottom-left origin) normalised to [page] (top-left origin).
   static ui.Rect _normalise(PdfRect r, PdfPage page) => ui.Rect.fromLTRB(
-        r.left / page.width,
-        (page.height - r.top) / page.height,
-        r.right / page.width,
-        (page.height - r.bottom) / page.height,
-      );
+    r.left / page.width,
+    (page.height - r.top) / page.height,
+    r.right / page.width,
+    (page.height - r.bottom) / page.height,
+  );
 
   @override
   Future<List<OutlineEntry>> loadOutline() async {
     List<OutlineEntry> map(List<PdfOutlineNode> nodes) => [
-          for (final n in nodes)
-            OutlineEntry(
-              title: n.title.trim(),
-              page: switch (n.dest?.pageNumber) {
-                final p? when p >= 1 && p <= pageCount => p,
-                _ => null,
-              },
-              children: map(n.children),
-            ),
-        ];
+      for (final n in nodes)
+        OutlineEntry(
+          title: n.title.trim(),
+          page: switch (n.dest?.pageNumber) {
+            final p? when p >= 1 && p <= pageCount => p,
+            _ => null,
+          },
+          children: map(n.children),
+        ),
+    ];
     try {
       return map(await document.loadOutline());
     } catch (_) {
@@ -205,16 +204,21 @@ class PdfReaderDocument implements ReaderDocument {
   }
 
   @override
-  Future<ui.Image?> renderPageImage(int pageNumber,
-      {required int width, Future<void>? cancel}) async {
+  Future<ui.Image?> renderPageImage(
+    int pageNumber, {
+    required int width,
+    Future<void>? cancel,
+  }) async {
     final page = await _loaded(pageNumber);
     if (page == null) return null;
     final token = page.createCancellationToken();
     var cancelled = false;
-    unawaited(cancel?.then((_) {
-      cancelled = true;
-      token.cancel();
-    }));
+    unawaited(
+      cancel?.then((_) {
+        cancelled = true;
+        token.cancel();
+      }),
+    );
     try {
       final height = (page.height * width / page.width).round();
       final pdfImage = await page.render(
@@ -240,5 +244,6 @@ class PdfReaderDocument implements ReaderDocument {
 }
 
 /// Formats the app can import, in sniffing order.
-final documentFormatsProvider =
-    Provider<List<DocumentFormat>>((ref) => const [PdfDocumentFormat()]);
+final documentFormatsProvider = Provider<List<DocumentFormat>>(
+  (ref) => const [PdfDocumentFormat()],
+);

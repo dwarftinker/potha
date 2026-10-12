@@ -21,8 +21,8 @@ const continuousGap = 8.0;
 /// The scale that fits a [pageWidth] × [pageHeight] page into [view] for [fit].
 double fitScale(double pageWidth, double pageHeight, Size view, PageFit fit) =>
     fit == PageFit.fitWidth
-        ? view.width / pageWidth
-        : min(view.width / pageWidth, view.height / pageHeight);
+    ? view.width / pageWidth
+    : min(view.width / pageWidth, view.height / pageHeight);
 
 /// Pages one below the other, each centred horizontally (continuous mode).
 PdfPageLayout continuousLayout(List<Size> pages, Size view, PageFit fit) {
@@ -47,13 +47,15 @@ class PdfDocumentViewFactory implements DocumentViewFactory {
   DocumentViewController createController() => PdfViewController();
 
   @override
-  Widget build(ReaderDocument doc,
-          {required DocumentViewController controller, required ReaderViewConfig config}) =>
-      PdfDocumentView(
-        document: doc as PdfReaderDocument,
-        controller: controller as PdfViewController,
-        config: config,
-      );
+  Widget build(
+    ReaderDocument doc, {
+    required DocumentViewController controller,
+    required ReaderViewConfig config,
+  }) => PdfDocumentView(
+    document: doc as PdfReaderDocument,
+    controller: controller as PdfViewController,
+    config: config,
+  );
 }
 
 class PdfDocumentView extends StatefulWidget {
@@ -104,16 +106,13 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     }
   }
 
-  void _afterLayout(VoidCallback action) =>
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => action());
-      });
+  void _afterLayout(VoidCallback action) => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => action());
+  });
 
   PdfPageLayout _layoutPages(List<PdfPage> pages, PdfViewerParams params) {
     final view = _view.isEmpty ? const Size(400, 800) : _view;
-    final sizes = [
-      for (var i = 0; i < pages.length; i++) widget.document.pageSize(i + 1),
-    ];
+    final sizes = [for (var i = 0; i < pages.length; i++) widget.document.pageSize(i + 1)];
     return _paged
         ? pagedLayout(sizes, view, widget.config.fit)
         : continuousLayout(sizes, view, widget.config.fit);
@@ -121,8 +120,11 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
 
   /// Zoom 1.0 is the normal view: pages are laid out at the fit already.
   static double? _normalZoom(
-          PdfDocument document, PdfViewerController controller, double fit, double cover) =>
-      1.0;
+    PdfDocument document,
+    PdfViewerController controller,
+    double fit,
+    double cover,
+  ) => 1.0;
 
   /// Zoom limits from the current page as laid out at the normal view (FR-018).
   ZoomRange _zoomRange(Size view) {
@@ -132,74 +134,103 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     return zoomRange(pageAtNormal: page * s, view: view);
   }
 
+  /// Search matches (FR-032), painted in colours chosen to look right after the theme
+  /// filter (research R5).
+  void _paintHighlights(Canvas canvas, Rect pageRect, PdfPage page) {
+    final config = widget.config;
+    for (final h in config.highlights) {
+      if (h.page != page.pageNumber) continue;
+      final paint = Paint()..color = h.active ? config.activeHighlightColor : config.highlightColor;
+      for (final r in h.rects) {
+        canvas.drawRect(
+          Rect.fromLTRB(
+            pageRect.left + r.left * pageRect.width,
+            pageRect.top + r.top * pageRect.height,
+            pageRect.left + r.right * pageRect.width,
+            pageRect.top + r.bottom * pageRect.height,
+          ).inflate(1),
+          paint,
+        );
+      }
+    }
+  }
+
   Matrix4 _normalize(Matrix4 m, Size viewSize, PdfPageLayout layout, PdfViewerController? c) {
     if (!_paged || _view.isEmpty || layout.pageLayouts.isEmpty) return m;
-    return clampToPage(m,
-        layout: layout, view: _view, page: _c.currentPage, sliding: _drag.sliding);
+    return clampToPage(
+      m,
+      layout: layout,
+      view: _view,
+      page: _c.currentPage,
+      sliding: _drag.sliding,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final config = widget.config;
-    return LayoutBuilder(builder: (context, constraints) {
-      final size = constraints.biggest;
-      if (size != _view) {
-        final keep = _c.isReady ? _c.position : null;
-        _view = size;
-        _c.viewSize = size;
-        // Rotation or a window resize: stay on the same content (FR-015).
-        if (keep != null) _afterLayout(() => _c.goTo(keep, animate: false));
-      }
-      final range = _zoomRange(size);
-      _c
-        ..minZoom = range.min
-        ..maxZoom = range.max;
-      final viewer = PdfViewer(
-        _ref,
-        controller: _c.pdf,
-        params: PdfViewerParams(
-          layoutPages: _layoutPages,
-          // Paged mode moves the view itself (PagedDragHandler); pinch stays with pdfrx.
-          panEnabled: !_paged,
-          normalizeMatrix: _paged ? _normalize : null,
-          margin: 0,
-          // The theme filter would recolour the background too; it is painted below.
-          backgroundColor: Colors.transparent,
-          sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
-            minScale: range.min,
-            maxScale: range.max,
-            useAlternativeFitScaleAsMinScale: false,
-            calculateInitialZoom: _normalZoom,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        if (size != _view) {
+          final keep = _c.isReady ? _c.position : null;
+          _view = size;
+          _c.viewSize = size;
+          // Rotation or a window resize: stay on the same content (FR-015).
+          if (keep != null) _afterLayout(() => _c.goTo(keep, animate: false));
+        }
+        final range = _zoomRange(size);
+        _c
+          ..minZoom = range.min
+          ..maxZoom = range.max;
+        final viewer = PdfViewer(
+          _ref,
+          controller: _c.pdf,
+          params: PdfViewerParams(
+            layoutPages: _layoutPages,
+            // Paged mode moves the view itself (PagedDragHandler); pinch stays with pdfrx.
+            panEnabled: !_paged,
+            normalizeMatrix: _paged ? _normalize : null,
+            margin: 0,
+            // The theme filter would recolour the background too; it is painted below.
+            backgroundColor: Colors.transparent,
+            sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
+              minScale: range.min,
+              maxScale: range.max,
+              useAlternativeFitScaleAsMinScale: false,
+              calculateInitialZoom: _normalZoom,
+            ),
+            // Taps belong to the reader's TapDetector (research R3); pdfrx handles none.
+            onGeneralTap: (context, controller, details) => true,
+            textSelectionParams: const PdfTextSelectionParams(enabled: false),
+            enableKeyboardNavigation: false,
+            onViewerReady: (document, controller) {
+              _c.viewSize = _view;
+              _c.goTo(config.initialPosition, animate: false);
+            },
+            pagePaintCallbacks: config.highlights.isEmpty ? null : [_paintHighlights],
+            pageOverlaysBuilder: (context, pageRect, page) => [
+              if (widget.document.failedPages.contains(page.pageNumber))
+                const Positioned.fill(child: PageUnavailable()),
+            ],
           ),
-          // Taps belong to the reader's TapDetector (research R3); pdfrx handles none.
-          onGeneralTap: (context, controller, details) => true,
-          textSelectionParams: const PdfTextSelectionParams(enabled: false),
-          enableKeyboardNavigation: false,
-          onViewerReady: (document, controller) {
-            _c.viewSize = _view;
-            _c.goTo(config.initialPosition, animate: false);
-          },
-          pageOverlaysBuilder: (context, pageRect, page) => [
-            if (widget.document.failedPages.contains(page.pageNumber))
-              const Positioned.fill(child: PageUnavailable()),
-          ],
-        ),
-      );
-      final filter = config.pageFilter;
-      // Pages are recoloured for the reading theme (research R5). Everything pdfrx
-      // paints is inside the filter, so highlight colours are chosen to come out right.
-      final themed = ColoredBox(
-        color: config.backgroundColor,
-        child: filter == null ? viewer : ColorFiltered(colorFilter: filter, child: viewer),
-      );
-      if (!_paged) return themed;
-      return Listener(
-        onPointerDown: _drag.onDown,
-        onPointerMove: _drag.onMove,
-        onPointerUp: _drag.onUp,
-        onPointerCancel: _drag.onCancel,
-        child: themed,
-      );
-    });
+        );
+        final filter = config.pageFilter;
+        // Pages are recoloured for the reading theme (research R5). Everything pdfrx
+        // paints is inside the filter, so highlight colours are chosen to come out right.
+        final themed = ColoredBox(
+          color: config.backgroundColor,
+          child: filter == null ? viewer : ColorFiltered(colorFilter: filter, child: viewer),
+        );
+        if (!_paged) return themed;
+        return Listener(
+          onPointerDown: _drag.onDown,
+          onPointerMove: _drag.onMove,
+          onPointerUp: _drag.onUp,
+          onPointerCancel: _drag.onCancel,
+          child: themed,
+        );
+      },
+    );
   }
 }

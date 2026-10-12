@@ -7,15 +7,14 @@ import 'dart:typed_data';
 import '../document_format.dart';
 import 'pdf_metadata_reader.dart';
 
-Future<DocumentMetadata> readMetadataFromPath(String path) =>
-    Isolate.run(() {
-      final file = File(path).openSync();
-      try {
-        return PdfMetadataReader.readSource(_FileByteSource(file));
-      } finally {
-        file.closeSync();
-      }
-    });
+Future<DocumentMetadata> readMetadataFromPath(String path) => Isolate.run(() {
+  final file = File(path).openSync();
+  try {
+    return PdfMetadataReader.readSource(_FileByteSource(file));
+  } finally {
+    file.closeSync();
+  }
+});
 
 class _FileByteSource implements PdfByteSource {
   _FileByteSource(this._file) : length = _file.lengthSync();

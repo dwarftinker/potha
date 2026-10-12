@@ -32,7 +32,7 @@ PageNumberInput parsePageNumber(String input, int pageCount) {
   final text = input.trim();
   final page = RegExp(r'^\d+$').hasMatch(text) ? int.tryParse(text) : null;
   if (page != null && page >= 1 && page <= pageCount) return PageNumberOk(page);
-  return PageNumberError(pageCount == 1
-      ? 'This book has only page 1.'
-      : 'Enter a page from 1 to $pageCount.');
+  return PageNumberError(
+    pageCount == 1 ? 'This book has only page 1.' : 'Enter a page from 1 to $pageCount.',
+  );
 }

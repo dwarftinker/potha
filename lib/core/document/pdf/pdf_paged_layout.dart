@@ -166,7 +166,11 @@ class PagedDragHandler {
       );
     } else {
       snap = zoomedEdgeTurn(
-          overscroll: _overscroll, viewWidth: _view.width, page: page, pageCount: count);
+        overscroll: _overscroll,
+        viewWidth: _view.width,
+        page: page,
+        pageCount: count,
+      );
     }
     _endDrag(settle: false);
     switch (snap) {
@@ -198,6 +202,11 @@ class PagedDragHandler {
     _pdf.goTo(_clamp(_pdf.value), duration: const Duration(milliseconds: 180));
   }
 
-  Matrix4 _clamp(Matrix4 m) => clampToPage(m,
-      layout: _pdf.layout, view: _view, page: controller.currentPage, sliding: sliding);
+  Matrix4 _clamp(Matrix4 m) => clampToPage(
+    m,
+    layout: _pdf.layout,
+    view: _view,
+    page: controller.currentPage,
+    sliding: sliding,
+  );
 }

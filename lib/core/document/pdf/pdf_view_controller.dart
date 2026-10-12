@@ -102,8 +102,11 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   @override
   Future<void> goTo(ReadingPosition position, {bool animate = true}) async {
     if (!isReady) return;
-    final p = ReadingPosition.clamped(position.page, position.offsetY,
-        pageCount: _layout.pageLayouts.length);
+    final p = ReadingPosition.clamped(
+      position.page,
+      position.offsetY,
+      pageCount: _layout.pageLayouts.length,
+    );
     final rect = _layout.pageLayouts[p.page - 1];
     final z = pdf.currentZoom;
     if (mode == PageMode.paged) currentPage = p.page;
@@ -112,8 +115,10 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
       // Never above the page; a page shorter than the view is centred by the view.
       top = top.clamp(rect.top, max(rect.top, rect.bottom - viewSize.height / z));
     }
-    await pdf.goTo(matrixFor(x: _left(rect, z), y: top, zoom: z),
-        duration: animate ? const Duration(milliseconds: 200) : Duration.zero);
+    await pdf.goTo(
+      matrixFor(x: _left(rect, z), y: top, zoom: z),
+      duration: animate ? const Duration(milliseconds: 200) : Duration.zero,
+    );
     _matrixChanged();
   }
 
@@ -125,8 +130,10 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
     final v = visibleRect;
     final maxTop = max(0.0, _layout.documentSize.height - v.height);
     final top = (v.top + dy).clamp(0.0, maxTop);
-    await pdf.goTo(matrixFor(x: v.left, y: top, zoom: pdf.currentZoom),
-        duration: const Duration(milliseconds: 200));
+    await pdf.goTo(
+      matrixFor(x: v.left, y: top, zoom: pdf.currentZoom),
+      duration: const Duration(milliseconds: 200),
+    );
   }
 
   @override
@@ -178,8 +185,7 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
     for (var i = 0; i < pages.length; i++) {
       final r = pages[i];
       if (r.contains(doc)) {
-        return PagePoint(
-            i + 1, Offset((doc.dx - r.left) / r.width, (doc.dy - r.top) / r.height));
+        return PagePoint(i + 1, Offset((doc.dx - r.left) / r.width, (doc.dy - r.top) / r.height));
       }
     }
     return null;

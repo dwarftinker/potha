@@ -20,6 +20,7 @@ import '../data/reader_repository.dart';
 import '../domain/auto_hide.dart';
 import '../domain/jump_back.dart';
 import '../domain/reader_theme.dart';
+import '../domain/text_search.dart';
 import '../domain/tap_zones.dart';
 import '../progress_saver.dart';
 import 'contents_sheet.dart';
@@ -27,6 +28,7 @@ import 'go_to_page_dialog.dart';
 import 'jump_back_chip.dart';
 import 'reader_bars.dart';
 import 'reader_shortcuts.dart';
+import 'search_panel.dart';
 import 'settings_sheet.dart';
 import 'tap_detector.dart';
 import 'web_link_dialog.dart';
@@ -71,6 +73,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// Links per page, loaded as pages come into view, so a tap can follow one at once.
   final _links = <int, List<DocumentLink>>{};
   Future<List<OutlineEntry>>? _outline;
+  SearchSession? _search;
   late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
@@ -181,6 +184,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               ..positionChanged(start);
       });
       _loadLinksNear(start.page);
+      _search = SearchSession(TextSearch(doc), currentPage: () => _position.page)
+        ..addListener(_rebuild);
     } on DocumentOpenException catch (e) {
       _fail(
         e.kind == DocumentOpenFailure.passwordCancelled
@@ -201,6 +206,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _lifecycle.dispose();
     _keepAwake.disable();
     _jumpBack.dispose();
+    _search?.dispose();
     _controls
       ..removeListener(_controlsChanged)
       ..dispose();
@@ -286,6 +292,45 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (page != null) await _jump(ReadingPosition(page, 0));
   });
 
+  Future<void> _openSearch() => _withControlsHeld(() async {
+    final index = await showSearchSheet(_ui, _search!);
+    if (index == null) return;
+    _search!.choose(index);
+    await _showMatch(jump: true);
+  });
+
+  /// Shows the chosen match a little below the top of the view (FR-032).
+  Future<void> _showMatch({required bool jump}) async {
+    final r = _search?.activeResult;
+    if (r == null) return;
+    final top = r.rects.isEmpty ? 0.0 : (r.rects.first.top - 0.15).clamp(0.0, 1.0);
+    final to = ReadingPosition(r.page, top);
+    jump ? await _jump(to) : await _view!.goTo(to);
+  }
+
+  void _stepMatch(int delta) {
+    _search?.step(delta);
+    _showMatch(jump: false);
+  }
+
+  /// Every match, grouped by page; the chosen one marked (FR-032).
+  List<PageHighlight> get _highlights {
+    final s = _search;
+    final run = s?.run;
+    if (s == null || run == null || s.active == null) return const [];
+    final byPage = <int, List<Rect>>{};
+    final active = s.activeResult;
+    final out = <PageHighlight>[];
+    for (final r in run.results) {
+      if (identical(r, active)) {
+        out.add(PageHighlight(r.page, r.rects, active: true));
+      } else {
+        (byPage[r.page] ??= []).addAll(r.rects);
+      }
+    }
+    return [for (final e in byPage.entries) PageHighlight(e.key, e.value), ...out];
+  }
+
   Future<void> _openContents() => _withControlsHeld(() async {
     final page = await showContentsSheet(
       _ui,
@@ -369,6 +414,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       backgroundColor: theme.background,
       highlightColor: theme.highlightPaintColor,
       activeHighlightColor: theme.activeHighlightPaintColor,
+      highlights: _highlights,
     );
   }
 
@@ -435,6 +481,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                 onBack: _back,
                                 actions: [
                                   IconButton(
+                                    icon: const Icon(Icons.search),
+                                    tooltip: 'Search in book',
+                                    onPressed: _openSearch,
+                                  ),
+                                  IconButton(
                                     icon: const Icon(Icons.toc),
                                     tooltip: 'Table of contents',
                                     onPressed: _openContents,
@@ -478,6 +529,20 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       ),
                     ),
                   ),
+                  if (_search case final search?)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: MediaQuery.paddingOf(context).top + (_controls.visible ? 64 : 12),
+                      child: Center(
+                        child: SearchMatchBar(
+                          session: search,
+                          onStep: _stepMatch,
+                          onClose: search.clear,
+                          onOpen: _openSearch,
+                        ),
+                      ),
+                    ),
                   if (_jumpBack.target case final target?)
                     Positioned(
                       left: 0,
