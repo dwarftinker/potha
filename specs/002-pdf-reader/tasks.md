@@ -228,13 +228,13 @@ on its own.
 
 ### Tests for User Story 8 (write first, confirm they fail) ⚠️
 
-- [ ] T066 [P] [US8] Unit-test `ThumbnailCache` in test/unit/reader/thumbnail_cache_test.dart: an LRU of 200 images that disposes evicted images; a request for a page already loading shares the result; cancelling a request for a tile scrolled away cancels the render; a failed render is remembered as a placeholder
-- [ ] T067 [P] [US8] Widget-test thumbnails in test/widget/reader_thumbnails_test.dart: the grid opens scrolled to the current page, which is marked, with page numbers (FR-035); choosing a page jumps and records jump-back; a failing page shows a placeholder tile
+- [X] T066 [P] [US8] Unit-test `ThumbnailCache` in test/unit/reader/thumbnail_cache_test.dart: an LRU of 200 images that disposes evicted images; a request for a page already loading shares the result; cancelling a request for a tile scrolled away cancels the render; a failed render is remembered as a placeholder
+- [X] T067 [P] [US8] Widget-test thumbnails in test/widget/reader_thumbnails_test.dart: the grid opens scrolled to the current page, which is marked, with page numbers (FR-035); choosing a page jumps and records jump-back; a failing page shows a placeholder tile
 
 ### Implementation for User Story 8
 
-- [ ] T068 [P] [US8] Implement `ThumbnailCache` in lib/features/reader/data/thumbnail_cache.dart over `ReaderDocument.renderPageImage` (width = min(180, tile width) × device pixel ratio); make T066 pass
-- [ ] T069 [US8] Create lib/features/reader/ui/thumbnails_sheet.dart (`GridView.builder`, aspect ratios from `pageSize`, scrolled to the current page) and open it from the Thumbnails button; make T067 pass
+- [X] T068 [P] [US8] Implement `ThumbnailCache` in lib/features/reader/data/thumbnail_cache.dart over `ReaderDocument.renderPageImage` (width = min(180, tile width) × device pixel ratio); make T066 pass
+- [X] T069 [US8] Create lib/features/reader/ui/thumbnails_sheet.dart (`GridView.builder`, aspect ratios from `pageSize`, scrolled to the current page) and open it from the Thumbnails button; make T067 pass
 
 **Checkpoint**: All eight stories done.
 

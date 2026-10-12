@@ -17,6 +17,7 @@ import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
 import '../../library/ui/password_dialog.dart';
 import '../data/reader_repository.dart';
+import '../data/thumbnail_cache.dart';
 import '../domain/auto_hide.dart';
 import '../domain/jump_back.dart';
 import '../domain/reader_theme.dart';
@@ -31,6 +32,7 @@ import 'reader_shortcuts.dart';
 import 'search_panel.dart';
 import 'settings_sheet.dart';
 import 'tap_detector.dart';
+import 'thumbnails_sheet.dart';
 import 'web_link_dialog.dart';
 
 /// View builders per format id. Overridden in tests.
@@ -74,6 +76,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _links = <int, List<DocumentLink>>{};
   Future<List<OutlineEntry>>? _outline;
   SearchSession? _search;
+  ThumbnailCache? _thumbnails;
   late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
@@ -207,6 +210,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _keepAwake.disable();
     _jumpBack.dispose();
     _search?.dispose();
+    _thumbnails?.dispose();
     _controls
       ..removeListener(_controlsChanged)
       ..dispose();
@@ -330,6 +334,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
     return [for (final e in byPage.entries) PageHighlight(e.key, e.value), ...out];
   }
+
+  Future<void> _openThumbnails() => _withControlsHeld(() async {
+    final doc = _doc!;
+    // Tiles are about 110 px wide; render them sharp for this screen (research R11).
+    final width = (110 * MediaQuery.devicePixelRatioOf(context)).round();
+    final page = await showThumbnailsSheet(
+      _ui,
+      doc: doc,
+      cache: _thumbnails ??= ThumbnailCache(doc, width: width),
+      currentPage: _position.page,
+    );
+    if (page != null) await _jump(ReadingPosition(page, 0));
+  });
 
   Future<void> _openContents() => _withControlsHeld(() async {
     final page = await showContentsSheet(
@@ -489,6 +506,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                     icon: const Icon(Icons.toc),
                                     tooltip: 'Table of contents',
                                     onPressed: _openContents,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.grid_view),
+                                    tooltip: 'Page thumbnails',
+                                    onPressed: _openThumbnails,
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.tune),
