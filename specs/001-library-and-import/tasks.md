@@ -157,13 +157,13 @@ on its own.
 
 ### Tests for User Story 4 (write first, confirm they fail) ⚠️
 
-- [ ] T061 [P] [US4] Unit-test sorting and search in test/unit/library/library_query_test.dart against the in-memory database: `recentlyOpened` = `lastOpenedAt IS NULL, lastOpenedAt DESC, addedAt DESC`; `recentlyAdded` = `addedAt DESC`; `title` = `sortTitle ASC, addedAt DESC` ("The Idiot" sorts under I); query "tolst" matches author "Tolstoy" and "TOLSTÓY"; empty query returns all; sort order saved to and read from library_preferences
-- [ ] T062 [P] [US4] Widget-test search and sort in test/widget/sort_search_test.dart: typing filters as you type; no-match message "No books match “…”" with a Clear search button; sort menu changes order
+- [X] T061 [P] [US4] Unit-test sorting and search in test/unit/library/library_query_test.dart against the in-memory database: `recentlyOpened` = `lastOpenedAt IS NULL, lastOpenedAt DESC, addedAt DESC`; `recentlyAdded` = `addedAt DESC`; `title` = `sortTitle ASC, addedAt DESC` ("The Idiot" sorts under I); query "tolst" matches author "Tolstoy" and "TOLSTÓY"; empty query returns all; sort order saved to and read from library_preferences
+- [X] T062 [P] [US4] Widget-test search and sort in test/widget/sort_search_test.dart: typing filters as you type; no-match message "No books match “…”" with a Clear search button; sort menu changes order
 
 ### Implementation for User Story 4
 
-- [ ] T063 [US4] Extend `watchBooks(sort, query)` in lib/features/library/data/library_repository.dart with the three ORDER BY clauses from data-model.md and `searchKey LIKE '%' || fold(query) || '%'`; add `watchPreferences` and `updatePreferences` (pass T061)
-- [ ] T064 [US4] Add a sort menu (Recently opened, Recently added, Title) and a search field to the AppBar in lib/features/library/ui/library_screen.dart, with the query debounced by 150 ms, sort persisted through `updatePreferences`, and the no-match state with Clear search (pass T062)
+- [X] T063 [US4] Extend `watchBooks(sort, query)` in lib/features/library/data/library_repository.dart with the three ORDER BY clauses from data-model.md and `searchKey LIKE '%' || fold(query) || '%'`; add `watchPreferences` and `updatePreferences` (pass T061)
+- [X] T064 [US4] Add a sort menu (Recently opened, Recently added, Title) and a search field to the AppBar in lib/features/library/ui/library_screen.dart, with the query debounced by 150 ms, sort persisted through `updatePreferences`, and the no-match state with Clear search (pass T062)
 
 **Checkpoint**: US4 works with 500 books within SC-004 (search updates in 0.5 s).
 
@@ -177,14 +177,14 @@ on its own.
 
 ### Tests for User Story 5 (write first, confirm they fail) ⚠️
 
-- [ ] T065 [P] [US5] Unit-test removal in test/unit/library/remove_book_test.dart with fakes: deletes the books row (cover and progress cascade), then the stored file, then the password; if the file delete fails, the row is still gone and the next `cleanUp` removes the orphan
-- [ ] T066 [P] [US5] Widget-test the remove flow in test/widget/remove_book_test.dart: long-press (or the tile's overflow menu) → "Remove from library"; dialog text "Remove “<title>”? This deletes Potha's copy and your reading progress. The original file is not affected."; Cancel changes nothing; Remove removes the tile
+- [X] T065 [P] [US5] Unit-test removal in test/unit/library/remove_book_test.dart with fakes: deletes the books row (cover and progress cascade), then the stored file, then the password; if the file delete fails, the row is still gone and the next `cleanUp` removes the orphan
+- [X] T066 [P] [US5] Widget-test the remove flow in test/widget/remove_book_test.dart: long-press (or the tile's overflow menu) → "Remove from library"; dialog text "Remove “<title>”? This deletes Potha's copy and your reading progress. The original file is not affected."; Cancel changes nothing; Remove removes the tile
 
 ### Implementation for User Story 5
 
-- [ ] T067 [US5] Implement `remove(bookId)` in lib/features/library/data/library_repository.dart (row delete, then `BookFileStore.delete`, then `PasswordStore.delete`) to pass T065
-- [ ] T068 [P] [US5] Build the confirmation dialog in lib/features/library/ui/remove_dialog.dart with the T066 wording, the destructive action styled with the theme's error colour, and semantics labels
-- [ ] T069 [US5] Add an overflow menu (and long-press) with "Remove from library" to BookTile in lib/features/library/ui/book_tile.dart, wired to the dialog and `remove` (pass T066)
+- [X] T067 [US5] Implement `remove(bookId)` in lib/features/library/data/library_repository.dart (row delete, then `BookFileStore.delete`, then `PasswordStore.delete`) to pass T065
+- [X] T068 [P] [US5] Build the confirmation dialog in lib/features/library/ui/remove_dialog.dart with the T066 wording, the destructive action styled with the theme's error colour, and semantics labels
+- [X] T069 [US5] Add an overflow menu (and long-press) with "Remove from library" to BookTile in lib/features/library/ui/book_tile.dart, wired to the dialog and `remove` (pass T066)
 
 **Checkpoint**: US5 works independently on Android and web.
 
@@ -198,12 +198,12 @@ on its own.
 
 ### Tests for User Story 6 (write first, confirm they fail) ⚠️
 
-- [ ] T070 [P] [US6] Widget-test view mode in test/widget/view_mode_test.dart: toggle switches grid ↔ list; list rows show small cover, title, author and progress; the choice is read back from library_preferences on a fresh screen
+- [X] T070 [P] [US6] Widget-test view mode in test/widget/view_mode_test.dart: toggle switches grid ↔ list; list rows show small cover, title, author and progress; the choice is read back from library_preferences on a fresh screen
 
 ### Implementation for User Story 6
 
-- [ ] T071 [P] [US6] Build the list row in lib/features/library/ui/book_row.dart: small cover (48 px wide), title, author, progress label, same semantics label and overflow menu as BookTile
-- [ ] T072 [US6] Add a grid/list toggle to the AppBar in lib/features/library/ui/library_screen.dart (icon button with tooltip "Show as list"/"Show as grid"), render `ListView.builder` of BookRows in list mode, and persist `viewMode` via `updatePreferences` (pass T070)
+- [X] T071 [P] [US6] Build the list row in lib/features/library/ui/book_row.dart: small cover (48 px wide), title, author, progress label, same semantics label and overflow menu as BookTile
+- [X] T072 [US6] Add a grid/list toggle to the AppBar in lib/features/library/ui/library_screen.dart (icon button with tooltip "Show as list"/"Show as grid"), render `ListView.builder` of BookRows in list mode, and persist `viewMode` via `updatePreferences` (pass T070)
 
 **Checkpoint**: All six user stories work independently.
 

@@ -1,11 +1,14 @@
 // Library queries and updates. See contracts/storage-and-import.md and data-model.md.
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, Variable;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/db/connection.dart';
+import '../../../core/secure/password_store.dart';
+import '../../../core/storage/book_file_store.dart';
 import '../domain/progress.dart' as lib_progress;
+import '../domain/text_fold.dart';
 
 /// What the library shows for one book. Carries no image bytes (SC-003).
 @immutable
@@ -36,23 +39,49 @@ class BookSummary {
 }
 
 class LibraryRepository {
-  LibraryRepository(this._db);
+  LibraryRepository(this._db, {this.files, this.passwords});
 
   final AppDatabase _db;
+  final BookFileStore? files;
+  final PasswordStore? passwords;
 
+  /// Removes a book (FR-021): the database row first (its cover and progress go with
+  /// it), then Potha's copy of the file, then any remembered password. The reader's
+  /// original file is never touched. A file left behind by a failed delete is removed
+  /// by the startup cleanup.
+  Future<void> remove(String bookId) async {
+    await (_db.delete(_db.books)..where((b) => b.id.equals(bookId))).go();
+    try {
+      await files?.delete(bookId);
+    } catch (_) {
+      // Orphaned file; cleaned up on next launch.
+    }
+    await passwords?.delete(bookId);
+  }
+
+  /// Sort orders from data-model.md (FR-017).
   static const _orderBy = {
     SortOrder.recentlyOpened:
         'b.last_opened_at IS NULL, b.last_opened_at DESC, b.added_at DESC',
+    SortOrder.recentlyAdded: 'b.added_at DESC',
+    SortOrder.title: 'b.sort_title ASC, b.added_at DESC',
   };
 
-  Stream<List<BookSummary>> watchBooks({SortOrder sort = SortOrder.recentlyOpened}) {
-    final order = _orderBy[sort] ?? _orderBy[SortOrder.recentlyOpened]!;
+  /// Books in [sort] order, filtered by title or author when [query] is not blank
+  /// (FR-018). Matching ignores case and accents; `instr` keeps % and _ literal.
+  Stream<List<BookSummary>> watchBooks({
+    SortOrder sort = SortOrder.recentlyOpened,
+    String query = '',
+  }) {
+    final folded = fold(query.trim());
     return _db
         .customSelect(
           'SELECT b.id, b.title, b.author, b.page_count, p.current_page, '
           'EXISTS (SELECT 1 FROM book_covers c WHERE c.book_id = b.id) AS has_cover '
           'FROM books b LEFT JOIN reading_progress p ON p.book_id = b.id '
-          'ORDER BY $order',
+          '${folded.isEmpty ? '' : 'WHERE instr(b.search_key, ?) > 0 '}'
+          'ORDER BY ${_orderBy[sort]}',
+          variables: [if (folded.isNotEmpty) Variable.withString(folded)],
           readsFrom: {_db.books, _db.readingProgress, _db.bookCovers},
         )
         .watch()
@@ -84,6 +113,18 @@ class LibraryRepository {
 
   Future<Set<String>> allBookIds() async =>
       (await _db.select(_db.books).map((b) => b.id).get()).toSet();
+
+  Stream<LibraryPreference> watchPreferences() =>
+      (_db.select(_db.libraryPreferences)..where((p) => p.id.equals(1))).watchSingle();
+
+  /// Saves the reader's sort order and view mode (FR-019).
+  Future<void> updatePreferences({SortOrder? sortOrder, ViewMode? viewMode}) =>
+      (_db.update(_db.libraryPreferences)..where((p) => p.id.equals(1))).write(
+        LibraryPreferencesCompanion(
+          sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
+          viewMode: viewMode == null ? const Value.absent() : Value(viewMode),
+        ),
+      );
 
   Future<LibraryPreference> _preferences() =>
       (_db.select(_db.libraryPreferences)..where((p) => p.id.equals(1))).getSingle();
@@ -130,5 +171,8 @@ class LibraryRepository {
       });
 }
 
-final libraryRepositoryProvider =
-    Provider<LibraryRepository>((ref) => LibraryRepository(ref.watch(appDatabaseProvider)));
+final libraryRepositoryProvider = Provider<LibraryRepository>((ref) => LibraryRepository(
+      ref.watch(appDatabaseProvider),
+      files: ref.watch(bookFileStoreProvider),
+      passwords: ref.watch(passwordStoreProvider),
+    ));

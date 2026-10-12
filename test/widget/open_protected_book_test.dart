@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/core/document/document_format.dart';
 import 'package:potha/core/document/pdf/pdf_document_format.dart';
-import 'package:potha/core/secure/password_store.dart';
-import 'package:potha/core/storage/book_file_store.dart';
 import 'package:potha/features/reader/basic_page_view.dart';
 
 import 'test_app.dart';
@@ -46,23 +44,6 @@ class _LockedFormat implements DocumentFormat {
   }
 }
 
-class _Store extends Fake implements BookFileStore {
-  @override
-  Future<BookFileRef?> find(String bookId) async =>
-      BookFileRef(readAll: () async => Uint8List(0), sizeBytes: 0);
-}
-
-class _Passwords implements PasswordStore {
-  _Passwords(this.saved);
-  final Map<String, String> saved;
-  @override
-  Future<String?> read(String bookId) async => saved[bookId];
-  @override
-  Future<void> write(String bookId, String password) async => saved[bookId] = password;
-  @override
-  Future<void> delete(String bookId) async => saved.remove(bookId);
-}
-
 class _View implements DocumentViewFactory {
   @override
   Widget build(ReaderDocument doc,
@@ -73,10 +54,8 @@ class _View implements DocumentViewFactory {
 void main() {
   Future<(TestApp, _LockedFormat)> openBook(WidgetTester tester, Map<String, String> saved) async {
     final format = _LockedFormat();
-    final app = TestApp(overrides: [
+    final app = TestApp(passwordStore: MemoryPasswordStore(saved), overrides: [
       documentFormatsProvider.overrideWithValue([format]),
-      bookFileStoreProvider.overrideWithValue(_Store()),
-      passwordStoreProvider.overrideWithValue(_Passwords(saved)),
       documentViewFactoriesProvider.overrideWithValue({'pdf': _View()}),
     ]);
     await app.pump(tester);

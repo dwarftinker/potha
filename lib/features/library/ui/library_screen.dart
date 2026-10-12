@@ -6,12 +6,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/app_database.dart';
 import '../../reader/basic_page_view.dart' deferred as reader;
 import '../data/library_repository.dart';
 import '../import/import_controller.dart';
 import '../import/import_service.dart';
 import '../import/import_source.dart';
 import '../import/incoming_files.dart';
+import 'book_actions.dart';
+import 'book_row.dart';
 import 'book_tile.dart';
 import 'drop_zone.dart';
 import 'empty_state.dart';
@@ -20,8 +23,24 @@ import 'import_summary.dart';
 import 'password_dialog.dart';
 import 'web_storage_notice.dart';
 
-final booksProvider = StreamProvider<List<BookSummary>>(
-    (ref) => ref.watch(libraryRepositoryProvider).watchBooks());
+final libraryPreferencesProvider = StreamProvider<LibraryPreference>(
+    (ref) => ref.watch(libraryRepositoryProvider).watchPreferences());
+
+/// The current library search text (already debounced).
+class SearchQuery extends Notifier<String> {
+  @override
+  String build() => '';
+  void set(String value) => state = value;
+}
+
+final searchQueryProvider = NotifierProvider<SearchQuery, String>(SearchQuery.new);
+
+final booksProvider = StreamProvider<List<BookSummary>>((ref) {
+  final sort = ref.watch(libraryPreferencesProvider).value?.sortOrder ?? SortOrder.recentlyOpened;
+  return ref
+      .watch(libraryRepositoryProvider)
+      .watchBooks(sort: sort, query: ref.watch(searchQueryProvider));
+});
 
 /// Open with / Share to is only available on Android and iOS. Overridden in tests.
 final incomingFilesEnabledProvider = Provider<bool>((ref) =>
@@ -47,6 +66,26 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   void Function()? _stopIncoming;
+  bool _searching = false;
+  final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
+  void _onSearchChanged(String text) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 150),
+        () => ref.read(searchQueryProvider.notifier).set(text));
+  }
+
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    ref.read(searchQueryProvider.notifier).set('');
+  }
+
+  void _closeSearch() {
+    _clearSearch();
+    setState(() => _searching = false);
+  }
 
   @override
   void initState() {
@@ -58,6 +97,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     _stopIncoming?.call();
     super.dispose();
   }
@@ -124,7 +165,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Library'),
+        title: _searching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: _onSearchChanged,
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  hintText: 'Search title or author',
+                  border: InputBorder.none,
+                ),
+              )
+            : const Text('Library'),
         bottom: _openingReader
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
@@ -132,6 +184,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               )
             : null,
         actions: [
+          if (_searching)
+            IconButton(
+              tooltip: 'Close search',
+              icon: const Icon(Icons.close),
+              onPressed: _closeSearch,
+            )
+          else
+            IconButton(
+              tooltip: 'Search library',
+              icon: const Icon(Icons.search),
+              onPressed: () => setState(() => _searching = true),
+            ),
+          _ViewToggle(
+            mode: ref.watch(libraryPreferencesProvider).value?.viewMode ?? ViewMode.grid,
+            onChanged: (mode) =>
+                ref.read(libraryRepositoryProvider).updatePreferences(viewMode: mode),
+          ),
+          _SortMenu(
+            selected: ref.watch(libraryPreferencesProvider).value?.sortOrder ??
+                SortOrder.recentlyOpened,
+            onSelected: (order) =>
+                ref.read(libraryRepositoryProvider).updatePreferences(sortOrder: order),
+          ),
           IconButton(
             tooltip: 'Add book',
             icon: const Icon(Icons.add),
@@ -151,9 +226,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         enabled: ref.watch(isWebProvider),
         onDrop: _onDrop,
         child: books.when(
-          data: (list) => list.isEmpty
-              ? EmptyLibrary(onAdd: _pickAndImport, isWeb: ref.watch(isWebProvider))
-              : _BookGrid(books: list, onOpen: _openBook),
+          data: (list) => switch ((list.isEmpty, ref.watch(searchQueryProvider))) {
+            (true, '') => EmptyLibrary(onAdd: _pickAndImport, isWeb: ref.watch(isWebProvider)),
+            (true, final query) => _NoMatches(query: query, onClear: _clearSearch),
+            _ => ref.watch(libraryPreferencesProvider).value?.viewMode == ViewMode.list
+                ? _BookList(books: list, onOpen: _openBook)
+                : _BookGrid(books: list, onOpen: _openBook),
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Could not load the library: $e')),
         ),
@@ -163,14 +242,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 }
 
 /// Cover grid; the column count follows the screen width.
-class _BookGrid extends StatelessWidget {
+class _BookGrid extends ConsumerWidget {
   const _BookGrid({required this.books, required this.onOpen});
 
   final List<BookSummary> books;
   final void Function(String bookId) onOpen;
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
+  Widget build(BuildContext context, WidgetRef ref) => GridView.builder(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 180,
@@ -183,6 +262,101 @@ class _BookGrid extends StatelessWidget {
           key: ValueKey(books[i].id),
           book: books[i],
           onTap: () => onOpen(books[i].id),
+          onLongPress: () => showBookActions(context, ref, books[i]),
+          menu: BookMenuButton(book: books[i]),
         ),
       );
+}
+
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({required this.selected, required this.onSelected});
+
+  final SortOrder selected;
+  final ValueChanged<SortOrder> onSelected;
+
+  static const _labels = {
+    SortOrder.recentlyOpened: 'Recently opened',
+    SortOrder.recentlyAdded: 'Recently added',
+    SortOrder.title: 'Title',
+  };
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<SortOrder>(
+        tooltip: 'Sort',
+        icon: const Icon(Icons.sort),
+        initialValue: selected,
+        onSelected: onSelected,
+        itemBuilder: (_) => [
+          for (final entry in _labels.entries)
+            CheckedPopupMenuItem(
+              value: entry.key,
+              checked: entry.key == selected,
+              child: Text(entry.value),
+            ),
+        ],
+      );
+}
+
+class _NoMatches extends StatelessWidget {
+  const _NoMatches({required this.query, required this.onClear});
+
+  final String query;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('No books match “$query”',
+                  textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 16),
+              TextButton(onPressed: onClear, child: const Text('Clear search')),
+            ],
+          ),
+        ),
+      );
+}
+
+/// Compact list of books (FR-022).
+class _BookList extends ConsumerWidget {
+  const _BookList({required this.books, required this.onOpen});
+
+  final List<BookSummary> books;
+  final void Function(String bookId) onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListView.builder(
+        padding: const EdgeInsets.only(bottom: 96),
+        itemCount: books.length,
+        itemBuilder: (context, i) => BookRow(
+          key: ValueKey(books[i].id),
+          book: books[i],
+          onTap: () => onOpen(books[i].id),
+          onLongPress: () => showBookActions(context, ref, books[i]),
+          menu: BookMenuButton(book: books[i]),
+        ),
+      );
+}
+
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.mode, required this.onChanged});
+
+  final ViewMode mode;
+  final ValueChanged<ViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) => mode == ViewMode.grid
+      ? IconButton(
+          tooltip: 'Show as list',
+          icon: const Icon(Icons.view_list_outlined),
+          onPressed: () => onChanged(ViewMode.list),
+        )
+      : IconButton(
+          tooltip: 'Show as grid',
+          icon: const Icon(Icons.grid_view_outlined),
+          onPressed: () => onChanged(ViewMode.grid),
+        );
 }

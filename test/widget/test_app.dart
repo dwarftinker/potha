@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/app.dart';
 import 'package:potha/core/db/app_database.dart';
 import 'package:potha/core/db/connection.dart';
+import 'package:potha/core/secure/password_store.dart';
+import 'package:potha/core/storage/book_file_store.dart';
 import 'package:potha/features/library/import/import_controller.dart';
 import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
@@ -53,18 +55,50 @@ ImportSource fakeSource(String name) =>
 ImportResult added(String name, String title, {String id = 'b1'}) => ImportResult(
     fileName: name, outcome: ImportOutcome.added, bookId: id, title: title);
 
+/// In-memory book files: every book "has" a small file.
+class MemoryFileStore extends Fake implements BookFileStore {
+  final deleted = <String>[];
+  @override
+  Future<BookFileRef?> find(String bookId) async => deleted.contains(bookId)
+      ? null
+      : BookFileRef(readAll: () async => Uint8List(0), sizeBytes: 0);
+  @override
+  Future<void> delete(String bookId) async => deleted.add(bookId);
+  @override
+  Future<void> cleanUp(Set<String> knownBookIds) async {}
+  @override
+  Future<void> requestPersistence() async {}
+}
+
+class MemoryPasswordStore implements PasswordStore {
+  MemoryPasswordStore([Map<String, String>? saved]) : saved = saved ?? {};
+  final Map<String, String> saved;
+  @override
+  Future<String?> read(String bookId) async => saved[bookId];
+  @override
+  Future<void> write(String bookId, String password) async => saved[bookId] = password;
+  @override
+  Future<void> delete(String bookId) async => saved.remove(bookId);
+}
+
 class TestApp {
   TestApp({
     ImportService? importService,
     bool isWeb = false,
     List<ImportSource> Function()? picked,
+    BookFileStore? fileStore,
+    PasswordStore? passwordStore,
     List<Override> overrides = const [],
-  }) : db = AppDatabase(NativeDatabase.memory()) {
+  })  : db = AppDatabase(NativeDatabase.memory()),
+        fileStore = fileStore ?? MemoryFileStore(),
+        passwordStore = passwordStore ?? MemoryPasswordStore() {
     widget = ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
         isWebProvider.overrideWithValue(isWeb),
         incomingFilesEnabledProvider.overrideWithValue(false),
+        bookFileStoreProvider.overrideWithValue(this.fileStore),
+        passwordStoreProvider.overrideWithValue(this.passwordStore),
         pickFilesProvider.overrideWithValue(
             () async => picked?.call() ?? [fakeSource('book.pdf')]),
         if (importService != null) importServiceProvider.overrideWithValue(importService),
@@ -75,11 +109,13 @@ class TestApp {
   }
 
   final AppDatabase db;
+  final BookFileStore fileStore;
+  final PasswordStore passwordStore;
   late final Widget widget;
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(widget);
-    await tester.pump();
+    await settleReal(tester);
   }
 
   /// Unmounts the app and closes the database so no drift timers stay pending.
