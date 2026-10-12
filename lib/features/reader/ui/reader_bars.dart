@@ -25,40 +25,38 @@ class ReaderTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: colors.background,
-        elevation: 2,
-        child: SafeArea(
-          bottom: false,
-          child: IconTheme.merge(
-            data: IconThemeData(color: colors.foreground),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Back to library',
-                    onPressed: onBack,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(color: colors.foreground),
-                    ),
-                  ),
-                  ...actions,
-                ],
+    color: colors.background,
+    elevation: 2,
+    child: SafeArea(
+      bottom: false,
+      child: IconTheme.merge(
+        data: IconThemeData(color: colors.foreground),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to library',
+                onPressed: onBack,
               ),
-            ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: colors.foreground),
+                ),
+              ),
+              ...actions,
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class ReaderBottomBar extends StatelessWidget {

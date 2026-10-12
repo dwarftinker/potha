@@ -10,18 +10,24 @@ import '../../../core/db/app_database.dart';
 import '../../../core/document/document_format.dart';
 import '../../../core/document/pdf/pdf_document_format.dart';
 import '../../../core/document/pdf/pdf_document_view.dart';
+import '../../../core/platform/link_opener.dart';
 import '../../../core/secure/password_store.dart';
 import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
 import '../../library/ui/password_dialog.dart';
 import '../data/reader_repository.dart';
 import '../domain/auto_hide.dart';
+import '../domain/jump_back.dart';
 import '../domain/tap_zones.dart';
 import '../progress_saver.dart';
+import 'contents_sheet.dart';
+import 'go_to_page_dialog.dart';
+import 'jump_back_chip.dart';
 import 'reader_bars.dart';
 import 'reader_shortcuts.dart';
 import 'settings_sheet.dart';
 import 'tap_detector.dart';
+import 'web_link_dialog.dart';
 
 /// View builders per format id. Overridden in tests.
 final documentViewFactoriesProvider = Provider<Map<String, DocumentViewFactory>>(
@@ -58,6 +64,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   );
   StreamSubscription<ReaderPreference>? _prefsSub;
   final _controls = AutoHide();
+  final _jumpBack = JumpBack();
+
+  /// Links per page, loaded as pages come into view, so a tap can follow one at once.
+  final _links = <int, List<DocumentLink>>{};
+  Future<List<OutlineEntry>>? _outline;
   late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
@@ -68,6 +79,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     super.initState();
     _repo;
     _controls.addListener(_controlsChanged);
+    _jumpBack.addListener(_rebuild);
     _setSystemBars(visible: false);
     _lifecycle = AppLifecycleListener(
       // The system may end the app while it is in the background (FR-011).
@@ -81,6 +93,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _controls.screenReaderOn = MediaQuery.accessibleNavigationOf(context);
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
   }
 
   void _controlsChanged() {
@@ -151,6 +167,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               // opened book is never shown as "New" again.
               ..positionChanged(start);
       });
+      _loadLinksNear(start.page);
     } on DocumentOpenException catch (e) {
       _fail(
         e.kind == DocumentOpenFailure.passwordCancelled
@@ -169,6 +186,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _jumpBack.dispose();
     _controls
       ..removeListener(_controlsChanged)
       ..dispose();
@@ -186,6 +204,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _saver?.positionChanged(position);
     if (pageChanged && mounted) {
       setState(() {});
+      _loadLinksNear(position.page);
       // FR-040: screen-reader users hear where they are.
       SemanticsService.sendAnnouncement(
         View.of(context),
@@ -195,10 +214,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
   }
 
+  void _loadLinksNear(int page) {
+    final doc = _doc;
+    if (doc == null) return;
+    for (final p in [page, page + 1]) {
+      if (p > doc.pageCount || _links.containsKey(p)) continue;
+      _links[p] = const [];
+      doc.loadLinks(p).then((links) => _links[p] = links);
+    }
+  }
+
   void _onTap(Offset global, Offset local, double viewWidth) {
     final view = _view!;
     final point = view.pagePointAt(global);
-    final action = classifyTap(x: local.dx, viewWidth: viewWidth, pagePoint: point);
+    final action = classifyTap(
+      x: local.dx,
+      viewWidth: viewWidth,
+      pagePoint: point,
+      linksOnPage: point == null ? const [] : _links[point.page] ?? const [],
+    );
     switch (action) {
       case ToggleControls():
         _controls.toggle();
@@ -206,10 +240,46 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         view.previous();
       case NextPage():
         view.next();
-      case FollowLink():
-        break; // User Story 5.
+      case FollowLink(:final link):
+        _followLink(link);
     }
   }
+
+  Future<void> _followLink(DocumentLink link) async {
+    switch (link) {
+      case PageLink(:final page):
+        await _jump(ReadingPosition(page, 0));
+      case WebLink(:final uri):
+        var open = false;
+        await _withControlsHeld(() async => open = await confirmWebLink(context, uri));
+        if (open) await ref.read(linkOpenerProvider).open(uri);
+    }
+  }
+
+  /// A jump the reader can undo once with "Back to page N" (FR-026).
+  Future<void> _jump(ReadingPosition to) async {
+    _jumpBack.recordJump(from: _position);
+    await _view!.goTo(to);
+  }
+
+  Future<void> _goBack() async {
+    final target = _jumpBack.use();
+    if (target != null) await _view!.goTo(target);
+  }
+
+  Future<void> _openGoToPage() => _withControlsHeld(() async {
+    final page = await showGoToPageDialog(context, pageCount: _doc!.pageCount);
+    if (page != null) await _jump(ReadingPosition(page, 0));
+  });
+
+  Future<void> _openContents() => _withControlsHeld(() async {
+    final page = await showContentsSheet(
+      context,
+      outline: _outline ??= _doc!.loadOutline(),
+      currentPage: _position.page,
+    );
+    if (page != null) await _jump(ReadingPosition(page, 0));
+  });
 
   void _back() => Navigator.of(context).maybePop();
 
@@ -248,10 +318,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     zoomOut: () => _view!.zoomOut(),
     leave: _back,
   );
-
-  Future<void> _jumpTo(int page) async {
-    await _view!.goTo(ReadingPosition(page, 0));
-  }
 
   BarColors get _barColors {
     final scheme = Theme.of(context).colorScheme;
@@ -322,6 +388,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                           onBack: _back,
                           actions: [
                             IconButton(
+                              icon: const Icon(Icons.toc),
+                              tooltip: 'Table of contents',
+                              onPressed: _openContents,
+                            ),
+                            IconButton(
                               icon: const Icon(Icons.tune),
                               tooltip: 'Reader settings',
                               onPressed: _openSettings,
@@ -347,10 +418,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                               onPressed: view.zoomIn,
                             ),
                           ],
+                          onPageLabelTap: _openGoToPage,
                           onSliderStart: _controls.hold,
                           onSliderEnd: (page) {
                             _controls.release();
-                            _jumpTo(page);
+                            _jump(ReadingPosition(page, 0));
                           },
                         ),
                       ],
@@ -359,6 +431,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 ),
               ),
             ),
+            if (_jumpBack.target case final target?)
+              Positioned(
+                left: 0,
+                right: 0,
+                // Above the bottom bar when it shows; near the edge otherwise.
+                bottom: MediaQuery.paddingOf(context).bottom + (_controls.visible ? 120 : 24),
+                child: Center(
+                  child: JumpBackChip(page: target.page, onPressed: _goBack),
+                ),
+              ),
           ],
         ),
       ),

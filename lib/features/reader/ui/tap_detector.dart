@@ -101,10 +101,10 @@ class _TapDetectorState extends State<TapDetector> {
 
   @override
   Widget build(BuildContext context) => Listener(
-        onPointerDown: _onDown,
-        onPointerMove: _onMove,
-        onPointerUp: _onUp,
-        onPointerCancel: _onCancel,
-        child: widget.child,
-      );
+    onPointerDown: _onDown,
+    onPointerMove: _onMove,
+    onPointerUp: _onUp,
+    onPointerCancel: _onCancel,
+    child: widget.child,
+  );
 }

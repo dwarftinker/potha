@@ -158,21 +158,21 @@ on its own.
 
 ### Tests for User Story 5 (write first, confirm they fail) ⚠️
 
-- [ ] T044 [P] [US5] Unit-test `parsePageNumber(input, pageCount)` in test/unit/reader/page_number_input_test.dart: "120" → 120 for 300 pages; " 7 " → 7; "0", "301", "-3", "abc", "" and "1.5" → an error carrying the range "1–300" (FR-023)
-- [ ] T045 [P] [US5] Unit-test `JumpBack` in test/unit/reader/jump_back_test.dart: empty at start; `recordJump(from)` sets it; a second jump replaces it; `use()` returns the position and clears it; `clear()` empties it; page turns do not change it (FR-026)
-- [ ] T046 [P] [US5] Unit-test `currentChapter(outline, page)` in test/unit/reader/outline_test.dart: the deepest entry whose page is at or before the current page; null before the first entry; entries without a page are skipped (FR-024)
-- [ ] T047 [P] [US5] Widget-test jumping in test/widget/reader_jump_test.dart with the fake document: dragging the slider shows "Page N" live and calls `goTo` only on release (FR-022); Go to page accepts 120 and rejects 0 with "Enter a page from 1 to 300." (FR-023); Contents lists nested entries with page numbers, marks the current chapter and jumps; a book without one shows "This book has no table of contents." (FR-024); tapping a page link jumps (FR-025); tapping a web link shows the full address, Cancel opens nothing and Open calls the fake `LinkOpener` once (FR-025); after each jump "Back to page N" appears, returns to the exact earlier position and disappears (FR-026)
+- [X] T044 [P] [US5] Unit-test `parsePageNumber(input, pageCount)` in test/unit/reader/page_number_input_test.dart: "120" → 120 for 300 pages; " 7 " → 7; "0", "301", "-3", "abc", "" and "1.5" → an error carrying the range "1–300" (FR-023)
+- [X] T045 [P] [US5] Unit-test `JumpBack` in test/unit/reader/jump_back_test.dart: empty at start; `recordJump(from)` sets it; a second jump replaces it; `use()` returns the position and clears it; `clear()` empties it; page turns do not change it (FR-026)
+- [X] T046 [P] [US5] Unit-test `currentChapter(outline, page)` in test/unit/reader/outline_test.dart: the deepest entry whose page is at or before the current page; null before the first entry; entries without a page are skipped (FR-024)
+- [X] T047 [P] [US5] Widget-test jumping in test/widget/reader_jump_test.dart with the fake document: dragging the slider shows "Page N" live and calls `goTo` only on release (FR-022); Go to page accepts 120 and rejects 0 with "Enter a page from 1 to 300." (FR-023); Contents lists nested entries with page numbers, marks the current chapter and jumps; a book without one shows "This book has no table of contents." (FR-024); tapping a page link jumps (FR-025); tapping a web link shows the full address, Cancel opens nothing and Open calls the fake `LinkOpener` once (FR-025); after each jump "Back to page N" appears, returns to the exact earlier position and disappears (FR-026)
 
 ### Implementation for User Story 5
 
-- [ ] T048 [P] [US5] Implement `parsePageNumber` in lib/features/reader/domain/page_number_input.dart; make T044 pass
-- [ ] T049 [P] [US5] Implement `JumpBack` in lib/features/reader/domain/jump_back.dart; make T045 pass
-- [ ] T050 [P] [US5] Implement `currentChapter` in lib/features/reader/domain/outline.dart; make T046 pass
-- [ ] T051 [P] [US5] Create lib/features/reader/ui/go_to_page_dialog.dart (numeric field, range hint, error text) and open it from "Page N of M" in the bottom bar
-- [ ] T052 [P] [US5] Create lib/features/reader/ui/contents_sheet.dart (nested, indented list with page numbers, current chapter marked, empty state, loaded once per open book through `loadOutline`)
-- [ ] T053 [P] [US5] Create lib/features/reader/ui/web_link_dialog.dart (full address, Open / Cancel) and a `LinkOpener` interface with a url_launcher implementation (`LaunchMode.externalApplication`) and `linkOpenerProvider` in lib/core/platform/link_opener.dart
-- [ ] T054 [P] [US5] Create lib/features/reader/ui/jump_back_chip.dart ("Back to page N", shown above the bottom bar whether or not the controls are visible)
-- [ ] T055 [US5] Wire jumps in lib/features/reader/ui/reader_screen.dart and reader_bars.dart: the slider label and release jump; a per-page link cache filled for visible pages through `loadLinks` and passed to `classifyTap`; record `JumpBack` before every jump (slider, Go to page, contents, link, and later search and thumbnails); make T047 pass
+- [X] T048 [P] [US5] Implement `parsePageNumber` in lib/features/reader/domain/page_number_input.dart; make T044 pass
+- [X] T049 [P] [US5] Implement `JumpBack` in lib/features/reader/domain/jump_back.dart; make T045 pass
+- [X] T050 [P] [US5] Implement `currentChapter` in lib/features/reader/domain/outline.dart; make T046 pass
+- [X] T051 [P] [US5] Create lib/features/reader/ui/go_to_page_dialog.dart (numeric field, range hint, error text) and open it from "Page N of M" in the bottom bar
+- [X] T052 [P] [US5] Create lib/features/reader/ui/contents_sheet.dart (nested, indented list with page numbers, current chapter marked, empty state, loaded once per open book through `loadOutline`)
+- [X] T053 [P] [US5] Create lib/features/reader/ui/web_link_dialog.dart (full address, Open / Cancel) and a `LinkOpener` interface with a url_launcher implementation (`LaunchMode.externalApplication`) and `linkOpenerProvider` in lib/core/platform/link_opener.dart
+- [X] T054 [P] [US5] Create lib/features/reader/ui/jump_back_chip.dart ("Back to page N", shown above the bottom bar whether or not the controls are visible)
+- [X] T055 [US5] Wire jumps in lib/features/reader/ui/reader_screen.dart and reader_bars.dart: the slider label and release jump; a per-page link cache filled for visible pages through `loadLinks` and passed to `classifyTap`; record `JumpBack` before every jump (slider, Go to page, contents, link, and later search and thumbnails); make T047 pass
 
 **Checkpoint**: Every navigation path works and can be undone once.
 

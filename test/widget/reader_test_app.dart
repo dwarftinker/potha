@@ -149,8 +149,22 @@ class FakeViewController extends ChangeNotifier implements DocumentViewControlle
     _zoom = (_zoom / 1.25).clamp(1, 5);
   }
 
+  /// The fake view shows the current page filling the view.
+  BuildContext? viewContext;
+
+  Rect? get viewRect {
+    final box = viewContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !box.attached) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
   @override
-  PagePoint? pagePointAt(Offset globalPosition) => null;
+  PagePoint? pagePointAt(Offset globalPosition) {
+    final r = viewRect;
+    if (r == null || !r.contains(globalPosition)) return null;
+    return PagePoint(_position.page,
+        Offset((globalPosition.dx - r.left) / r.width, (globalPosition.dy - r.top) / r.height));
+  }
 }
 
 class FakeViewFactory implements DocumentViewFactory {
@@ -204,6 +218,7 @@ class _FakeViewState extends State<_FakeView> {
 
   @override
   Widget build(BuildContext context) {
+    widget.controller.viewContext = context;
     final page = widget.controller.position.page;
     final failing =
         widget.doc is FakeReaderDocument && (widget.doc as FakeReaderDocument).failingPages.contains(page);

@@ -98,23 +98,24 @@ class ReaderShortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Shortcuts(
-        shortcuts: _shortcuts,
-        child: Actions(
-          actions: {
-            NextIntent: _ReaderAction<NextIntent>((_) => handlers.next()),
-            PreviousIntent: _ReaderAction<PreviousIntent>((_) => handlers.previous()),
-            FirstPageIntent: _ReaderAction<FirstPageIntent>((_) => handlers.first()),
-            LastPageIntent: _ReaderAction<LastPageIntent>((_) => handlers.last()),
-            ScrollStepIntent: _ReaderAction<ScrollStepIntent>(
-                (i) => handlers.scrollStep(i.fraction),
-                enabled: () => continuous),
-            ZoomInIntent: _ReaderAction<ZoomInIntent>((_) => handlers.zoomIn()),
-            ZoomOutIntent: _ReaderAction<ZoomOutIntent>((_) => handlers.zoomOut()),
-            LeaveReaderIntent: _ReaderAction<LeaveReaderIntent>((_) => handlers.leave()),
-          },
-          child: Focus(autofocus: true, child: child),
+    shortcuts: _shortcuts,
+    child: Actions(
+      actions: {
+        NextIntent: _ReaderAction<NextIntent>((_) => handlers.next()),
+        PreviousIntent: _ReaderAction<PreviousIntent>((_) => handlers.previous()),
+        FirstPageIntent: _ReaderAction<FirstPageIntent>((_) => handlers.first()),
+        LastPageIntent: _ReaderAction<LastPageIntent>((_) => handlers.last()),
+        ScrollStepIntent: _ReaderAction<ScrollStepIntent>(
+          (i) => handlers.scrollStep(i.fraction),
+          enabled: () => continuous,
         ),
-      );
+        ZoomInIntent: _ReaderAction<ZoomInIntent>((_) => handlers.zoomIn()),
+        ZoomOutIntent: _ReaderAction<ZoomOutIntent>((_) => handlers.zoomOut()),
+        LeaveReaderIntent: _ReaderAction<LeaveReaderIntent>((_) => handlers.leave()),
+      },
+      child: Focus(autofocus: true, child: child),
+    ),
+  );
 }
 
 /// An action that steps aside while the reader types in a text field (search, Go to
