@@ -198,5 +198,6 @@ that is at least two weeks old when it is added.
 | crypto | BSD-3 | yes (2025) | all | SHA-256 for duplicates |
 | archive | MIT | yes (2026) | all | Flate decoding for the metadata reader on web and mobile |
 | web | BSD-3 | yes (Dart team) | web | OPFS and storage persistence interop |
+| cross_file | BSD-3 | yes (Flutter team) | all | `XFile` for shared and dropped files (already a dependency of file_picker and desktop_drop) |
 
 `archive` releases 4.4.0–4.5.1 are less than two weeks old; pin 4.3.0 or later-but-aged.

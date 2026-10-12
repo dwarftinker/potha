@@ -1,4 +1,5 @@
 // Library queries and updates. See contracts/storage-and-import.md and data-model.md.
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -76,6 +77,16 @@ class LibraryRepository {
 
   Future<Set<String>> allBookIds() async =>
       (await _db.select(_db.books).map((b) => b.id).get()).toSet();
+
+  Future<LibraryPreference> _preferences() =>
+      (_db.select(_db.libraryPreferences)..where((p) => p.id.equals(1))).getSingle();
+
+  Future<bool> webStorageNoticeShown() async =>
+      (await _preferences()).webStorageNoticeShown;
+
+  Future<void> markWebStorageNoticeShown() =>
+      (_db.update(_db.libraryPreferences)..where((p) => p.id.equals(1)))
+          .write(const LibraryPreferencesCompanion(webStorageNoticeShown: Value(true)));
 
   /// Inserts a book and its cover in one transaction. [beforeCommit] runs inside the
   /// transaction (e.g. moving the staged file); if it throws, nothing is inserted.

@@ -1,26 +1,135 @@
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/library_repository.dart';
+import '../import/import_controller.dart';
+import '../import/import_service.dart';
+import '../import/import_source.dart';
+import '../import/incoming_files.dart';
+import 'drop_zone.dart';
+import 'import_progress.dart';
+import 'import_summary.dart';
+import 'password_dialog.dart';
+import 'web_storage_notice.dart';
 
 final booksProvider = StreamProvider<List<BookSummary>>(
     (ref) => ref.watch(libraryRepositoryProvider).watchBooks());
 
-/// Placeholder list; replaced by the cover grid in user story 2.
-class LibraryScreen extends ConsumerWidget {
+/// Open with / Share to is only available on Android and iOS. Overridden in tests.
+final incomingFilesEnabledProvider = Provider<bool>((ref) =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS));
+
+/// Picks PDFs with the system file picker. Overridden in tests.
+final pickFilesProvider = Provider<Future<List<ImportSource>> Function()>((ref) => () async {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+      );
+      return Future.wait(files.map(ImportSource.fromPlatformFile));
+    });
+
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  void Function()? _stopIncoming;
+
+  @override
+  void initState() {
+    super.initState();
+    if (ref.read(incomingFilesEnabledProvider)) {
+      _stopIncoming = listenForIncomingFiles(_import);
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopIncoming?.call();
+    super.dispose();
+  }
+
+  Future<String?> _askPassword(String fileName, {required bool retry}) =>
+      showPasswordDialog(context, fileName: fileName, retry: retry);
+
+  void _import(List<ImportSource> sources) => ref
+      .read(importControllerProvider.notifier)
+      .importSources(sources, askPassword: _askPassword);
+
+  Future<void> _pickAndImport() async {
+    try {
+      _import(await ref.read(pickFilesProvider)());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Couldn’t open the file picker.')));
+    }
+  }
+
+  Future<void> _onDrop(List<DropItem> files) async =>
+      _import(await Future.wait(files.map(ImportSource.fromXFile)));
+
+  void _openBook(String bookId) {
+    // Opening books arrives with user story 3.
+  }
+
+  Future<void> _onImportFinished(List<ImportResult> results) async {
+    ref.read(importControllerProvider.notifier).clearResults();
+    showImportSummary(context, results, onOpen: _openBook);
+
+    final added = results.any((r) => r.outcome == ImportOutcome.added);
+    if (added && ref.read(isWebProvider)) {
+      final repo = ref.read(libraryRepositoryProvider);
+      if (!await repo.webStorageNoticeShown()) {
+        if (!mounted) return;
+        await showWebStorageNotice(context);
+        await repo.markWebStorageNoticeShown();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(importControllerProvider.select((s) => s.results), (_, results) {
+      if (results != null) _onImportFinished(results);
+    });
     final books = ref.watch(booksProvider);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Library')),
-      body: books.when(
-        data: (list) => ListView(
-          children: [for (final b in list) ListTile(title: Text(b.title))],
+      appBar: AppBar(
+        title: const Text('Library'),
+        actions: [
+          IconButton(
+            tooltip: 'Add book',
+            icon: const Icon(Icons.add),
+            onPressed: _pickAndImport,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _pickAndImport,
+        icon: const Icon(Icons.add),
+        label: const Text('Add book'),
+      ),
+      bottomNavigationBar: const ImportProgressBar(),
+      body: DropZone(
+        enabled: ref.watch(isWebProvider),
+        onDrop: _onDrop,
+        child: books.when(
+          data: (list) => ListView(
+            children: [for (final b in list) ListTile(title: Text(b.title))],
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Could not load the library: $e')),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load the library: $e')),
       ),
     );
   }
