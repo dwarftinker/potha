@@ -16,28 +16,47 @@ Future<void> _run(BuildContext context, WidgetRef ref, BookSummary book, _BookAc
   }
 }
 
-/// The ⋮ button on a book.
+/// The ⋮ button on a book. Built from an InkResponse rather than a PopupMenuButton:
+/// one is built per tile while scrolling, and the Material button's tooltip, focus
+/// and theme layers made new grid rows miss the frame budget (SC-003).
 class BookMenuButton extends ConsumerWidget {
   const BookMenuButton({super.key, required this.book});
 
   final BookSummary book;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<_BookAction>(
-        tooltip: 'More options for ${book.title}',
-        icon: const Icon(Icons.more_vert),
-        padding: EdgeInsets.zero,
-        onSelected: (action) => _run(context, ref, book, action),
-        itemBuilder: (_) => const [
-          PopupMenuItem(
-            value: _BookAction.remove,
-            child: ListTile(
-              leading: Icon(Icons.delete_outline),
-              title: Text('Remove from library'),
-              contentPadding: EdgeInsets.zero,
-            ),
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
+    final button = context.findRenderObject()! as RenderBox;
+    final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+    final topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+    final action = await showMenu<_BookAction>(
+      context: context,
+      position: RelativeRect.fromRect(topLeft & button.size, Offset.zero & overlay.size),
+      items: const [
+        PopupMenuItem(
+          value: _BookAction.remove,
+          child: ListTile(
+            leading: Icon(Icons.delete_outline),
+            title: Text('Remove from library'),
+            contentPadding: EdgeInsets.zero,
           ),
-        ],
+        ),
+      ],
+    );
+    if (action != null && context.mounted) await _run(context, ref, book, action);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Semantics(
+        container: true,
+        button: true,
+        label: 'More options for ${book.title}',
+        onTap: () => _open(context, ref),
+        excludeSemantics: true,
+        child: InkResponse(
+          onTap: () => _open(context, ref),
+          radius: 20,
+          child: const SizedBox.square(dimension: 48, child: Icon(Icons.more_vert)),
+        ),
       );
 }
 

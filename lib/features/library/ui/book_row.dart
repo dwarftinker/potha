@@ -37,7 +37,7 @@ class BookRow extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: BookCover(
-                              bookId: book.id, title: book.title, hasCover: book.hasCover),
+                              bookId: book.id, title: book.title, hasCover: book.hasCover, width: 48),
                         ),
                       ),
                     ),

@@ -1,11 +1,13 @@
-// Fills an in-memory database with [count] books with small covers, for performance
+// Fills a fresh database with [count] books with small covers, for performance
 // tests (SC-003, SC-004).
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:potha/core/db/app_database.dart';
 import 'package:potha/features/library/domain/text_fold.dart';
 
@@ -22,7 +24,11 @@ Future<Uint8List> _coverPng(int i) async {
 }
 
 Future<AppDatabase> seededDatabase(int count) async {
-  final db = AppDatabase(NativeDatabase.memory());
+  // A file database on a background isolate, like the app's, so queries made while
+  // scrolling don't run on the UI thread.
+  final dir = await getTemporaryDirectory();
+  final file = File('${dir.path}/seed_${DateTime.now().microsecondsSinceEpoch}.sqlite');
+  final db = AppDatabase(NativeDatabase.createInBackground(file));
   final covers = [for (var i = 0; i < 12; i++) await _coverPng(i)];
   await db.batch((b) {
     for (var i = 0; i < count; i++) {

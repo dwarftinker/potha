@@ -7,10 +7,10 @@ with GitHub Spec Kit.
 
 ## Status
 
-- Feature 001 (library and import) is implemented on branch `001-library-and-import`,
-  76 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac), T077 (upstream
-  pdfrx issue, needs approval), T078 (Android and mobile-browser verification, needs the
-  Android SDK). See `specs/001-library-and-import/checklists/verification.md`.
+- Feature 001 (library and import) is merged and verified on Android (Galaxy S24) and
+  mobile Chrome; 77 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac),
+  T077 (upstream pdfrx issue, needs approval). See
+  `specs/001-library-and-import/checklists/verification.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -82,6 +82,8 @@ flutter test --platform chrome test/web
 flutter run -d chrome --no-web-resources-cdn
 tool/build_web.sh                    # release web build
 flutter test integration_test -d <android-device>
+flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
+  --target=integration_test/scroll_perf_test.dart -d <android-device>   # SC-003 frame budget
 ```
 
 - Mobile web needs a secure context for OPFS: `adb reverse tcp:8080 tcp:8080` and open
@@ -92,6 +94,14 @@ flutter test integration_test -d <android-device>
 - Widget tests: drift work must run outside fake async (`tester.runAsync`); seed with one
   `batch`, and close the database with `tester.runAsync(db.close)` (see
   `test/widget/test_app.dart`).
+- Android: Flutter is not on the PATH of non-interactive shells and neither is `adb`
+  (`~/Android/Sdk/platform-tools/adb`). Integration tests need the phone unlocked;
+  `adb shell svc power stayon usb` keeps it awake. `flutter test integration_test`
+  uninstalls the app afterwards. `compileSdk` is 37 because `receive_sharing_intent`
+  requires it.
+- Device tests must feed imports the way the platform does (files through `XFile`,
+  which gives `Stream<Uint8List>`), not only bytes in memory; that gap hid an
+  Android-only import hang.
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
   while declaring ^4.0.9). Revisit after 2026-10-25.
 
@@ -123,8 +133,6 @@ Once per project: `/speckit.constitution`. Then, for each feature:
 
 ## Next steps
 
-1. Install the Android SDK, then run the 001 integration tests and quickstart scenarios
-   on a device and in mobile Chrome (T078), and merge 001.
-2. Decide on the web follow-ups in `verification.md`: a service worker for offline
+1. Decide on the web follow-ups in `verification.md`: a service worker for offline
    reloads, and bundling Noto fonts for non-Latin titles.
-3. Start feature 002 (PDF reader) with `/speckit.specify` and `002-pdf-reader.md`.
+2. Start feature 002 (PDF reader) with `/speckit.specify` and `002-pdf-reader.md`.

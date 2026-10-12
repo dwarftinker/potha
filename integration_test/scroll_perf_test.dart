@@ -15,61 +15,79 @@ import 'seed_500_books.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Render every vsync like the real app; by default frames are drawn only when the
+  // test pumps (every 100 ms in pumpAndSettle), so each frame would jump a whole row.
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
-  testWidgets('scrolling 500 books stays smooth and search is fast', (
-    tester,
-  ) async {
-    final db = await seededDatabase(500);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          incomingFilesEnabledProvider.overrideWithValue(false),
-          isWebProvider.overrideWithValue(false),
-        ],
-        child: const PothaApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'scrolling 500 books stays smooth and search is fast',
+    (tester) async {
+      final db = await seededDatabase(500);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(db),
+            incomingFilesEnabledProvider.overrideWithValue(false),
+            isWebProvider.overrideWithValue(false),
+          ],
+          child: const PothaApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    Future<void> flingThrough(Finder scrollable) async {
-      for (var i = 0; i < 6; i++) {
-        await tester.fling(scrollable, const Offset(0, -1500), 4000);
-        await tester.pumpAndSettle();
+      Future<void> flingThrough(Finder scrollable) async {
+        for (var i = 0; i < 6; i++) {
+          await tester.fling(scrollable, const Offset(0, -1500), 4000);
+          await tester.pumpAndSettle();
+        }
+        for (var i = 0; i < 6; i++) {
+          await tester.fling(scrollable, const Offset(0, 1500), 4000);
+          await tester.pumpAndSettle();
+        }
       }
-      for (var i = 0; i < 6; i++) {
-        await tester.fling(scrollable, const Offset(0, 1500), 4000);
-        await tester.pumpAndSettle();
+
+      // Grid, then list (SC-003).
+      await binding.traceAction(
+        () => flingThrough(find.byType(GridView)),
+        reportKey: 'grid_scroll',
+      );
+      await tester.tap(find.byTooltip('Show as list'));
+      await tester.pumpAndSettle();
+      await binding.traceAction(
+        () => flingThrough(find.byType(ListView)),
+        reportKey: 'list_scroll',
+      );
+
+      // Search updates within 0.5 s of a keystroke (SC-004). On a device the integration
+      // binding leaves typing to the real keyboard, so use the test text input here.
+      tester.testTextInput.register();
+      await tester.tap(find.byTooltip('Search library'));
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(LibraryScreen)),
+      );
+      // "book 42" matches Book 42 and Book 420–429; not all of them fit on a phone
+      // screen, so wait for the result list, then check the rows that are shown.
+      final watch = Stopwatch()..start();
+      await tester.enterText(find.byType(TextField), 'book 42');
+      while (container.read(booksProvider).value?.length != 11) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (watch.elapsed > const Duration(seconds: 2)) break;
       }
-    }
-
-    // Grid, then list (SC-003).
-    await binding.traceAction(
-      () => flingThrough(find.byType(GridView)),
-      reportKey: 'grid_scroll',
-    );
-    await tester.tap(find.byTooltip('Show as list'));
-    await tester.pumpAndSettle();
-    await binding.traceAction(
-      () => flingThrough(find.byType(ListView)),
-      reportKey: 'list_scroll',
-    );
-
-    // Search updates within 0.5 s of a keystroke (SC-004).
-    await tester.tap(find.byTooltip('Search library'));
-    await tester.pumpAndSettle();
-    final watch = Stopwatch()..start();
-    await tester.enterText(find.byType(TextField), 'book 42');
-    while (find.text('Book 42').evaluate().isEmpty ||
-        find.text('Book 41').evaluate().isNotEmpty) {
-      await tester.pump(const Duration(milliseconds: 16));
-      if (watch.elapsed > const Duration(seconds: 2)) break;
-    }
-    watch.stop();
-    expect(
-      watch.elapsed,
-      lessThan(const Duration(milliseconds: 500)),
-      reason: 'Search took ${watch.elapsedMilliseconds} ms',
-    );
-  });
+      await tester.pump();
+      watch.stop();
+      expect(find.textContaining(RegExp(r'^Book 42')), findsWidgets);
+      expect(find.textContaining(RegExp(r'^Book (?!42)')), findsNothing);
+      tester.testTextInput.unregister();
+      // ignore: avoid_print
+      print('search: ${watch.elapsedMilliseconds} ms');
+      expect(
+        watch.elapsed,
+        lessThan(const Duration(milliseconds: 500)),
+        reason: 'Search took ${watch.elapsedMilliseconds} ms',
+      );
+    },
+    // testWidgets turns semantics on by default; measure what most readers get.
+    semanticsEnabled: false,
+  );
 }

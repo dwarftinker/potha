@@ -8,7 +8,7 @@ const _message = 'Remove “Emma”? This deletes Potha’s copy and your readin
     'The original file is not affected.';
 
 Future<void> openRemoveDialog(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('More options for Emma'));
+  await tester.tap(find.bySemanticsLabel('More options for Emma'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Remove from library'));
   await tester.pumpAndSettle();

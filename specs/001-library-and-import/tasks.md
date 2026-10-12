@@ -218,7 +218,7 @@ on its own.
 - [X] T075 [P] Confirm no network access: add a test in test/unit/no_network_test.dart that runs an import and open under `HttpOverrides` throwing on any connection (FR-023, FR-026)
 - [X] T076 [P] Measure the web build: `flutter build web --release`, record initial download size (gzipped) with and without the deferred reader in specs/001-library-and-import/quickstart.md, and confirm `pdfium.wasm` is not requested until import or open
 - [ ] T077 [P] Open an upstream pdfrx issue (or PR) proposing a document metadata API backed by `FPDF_GetMetaText` on native and web, and link it from a TODO comment in lib/core/document/pdf/pdf_metadata_reader.dart (research R1)
-- [ ] T078 Run every quickstart.md validation scenario on an Android device and in Chrome (desktop and on an Android phone via `adb reverse`), and record the results in specs/001-library-and-import/checklists/verification.md; iOS is listed as not verified (constitution v2.0.0)
+- [X] T078 Run every quickstart.md validation scenario on an Android device and in Chrome (desktop and on an Android phone via `adb reverse`), and record the results in specs/001-library-and-import/checklists/verification.md; iOS is listed as not verified (constitution v2.0.0)
 - [X] T079 Update CLAUDE.md: status (feature 001 implemented), how to run (build_runner, tests, mobile web via adb reverse), and the metadata-reader decision
 
 ---

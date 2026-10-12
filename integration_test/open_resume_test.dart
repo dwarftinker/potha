@@ -43,6 +43,8 @@ void main() {
     await pumpUntil(tester, find.text('Page 3 of 3'));
     await pumpUntil(tester, find.byType(PdfViewer));
     watch.stop();
+    // ignore: avoid_print
+    print('reopen: ${watch.elapsedMilliseconds} ms');
     expect(
       watch.elapsed,
       lessThan(const Duration(seconds: 2)),
