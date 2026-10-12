@@ -43,6 +43,16 @@ and at twice that, which is what the viewer redraws after a turn or a zoom.
 The paged-mode prototype (T003) was replaced by building paged mode directly. The device
 tests and frame timings above confirm it works on the S24.
 
+## Web: Chrome on the Galaxy S24, 2026-10-12
+
+Release build (`tool/build_web.sh`) served from the computer over `adb reverse`
+(`http://localhost:8080`). The user tried it by hand: "works good mostly".
+
+- Dark and sepia change photo colours. This is the known limit in FR-028 (research R5).
+  The user chose to keep the current behaviour and wait for pdfrx colour-scheme rendering
+  (`upstream-request.md`, not yet posted) rather than gentler themes or detecting photos
+  ourselves.
+
 ## Still to do
 
 - T075: check the wake lock in Chrome on a phone (over `adb reverse`).
