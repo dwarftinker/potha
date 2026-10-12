@@ -1,7 +1,6 @@
 // User Story 7: search in the book (FR-030 to FR-034).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:potha/core/document/document_format.dart';
 
 import 'reader_test_app.dart';
 import 'test_app.dart';
