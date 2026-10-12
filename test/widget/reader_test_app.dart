@@ -9,7 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/core/document/document_format.dart';
 import 'package:potha/core/document/page_unavailable.dart';
 import 'package:potha/core/document/pdf/pdf_document_format.dart';
-import 'package:potha/features/reader/reader.dart';
 import 'package:potha/features/reader/ui/reader_screen.dart';
 
 import 'test_app.dart';

@@ -94,16 +94,16 @@ on its own.
 
 ### Tests for User Story 2 (write first, confirm they fail) ⚠️
 
-- [ ] T028 [P] [US2] Unit-test the paged snap decision in test/unit/reader/paged_snap_test.dart: drag past 25% of the view width → turn in the drag direction; a fling over the threshold velocity → turn; otherwise snap back; no turn past the first or last page (FR-010); while zoomed, a drag that starts with the visible area away from the page edge pans and never turns (FR-019); the continuous step is the view height minus 1/24 (one line of overlap, FR-007)
-- [ ] T029 [P] [US2] Widget-test navigation in test/widget/reader_navigation_test.dart with the fake view: left and right edge taps call `previous` / `next` in both modes (FR-007); Right Arrow, Page Down and Space call `next`, Left Arrow, Page Up and Shift + Space call `previous`, Home and End go to the first and last page, Up / Down scroll a small step in continuous mode (FR-008); keys are ignored while a text field has focus; Esc goes back; a new book opens paged, switching a book to continuous in the settings sheet is saved and restored on reopening, and other books keep their own mode (FR-009); semantics actions "Next page" / "Previous page" exist on the page view (FR-040)
+- [X] T028 [P] [US2] Unit-test the paged snap decision in test/unit/document/paged_snap_test.dart: drag past 25% of the view width → turn in the drag direction; a fling over the threshold velocity → turn; otherwise snap back; no turn past the first or last page (FR-010); while zoomed, a drag that starts with the visible area away from the page edge pans and never turns (FR-019); the continuous step is the view height minus 1/24 (one line of overlap, FR-007)
+- [X] T029 [P] [US2] Widget-test navigation in test/widget/reader_navigation_test.dart with the fake view: left and right edge taps call `previous` / `next` in both modes (FR-007); Right Arrow, Page Down and Space call `next`, Left Arrow, Page Up and Shift + Space call `previous`, Home and End go to the first and last page, Up / Down scroll a small step in continuous mode (FR-008); keys are ignored while a text field has focus; Esc goes back; a new book opens paged, switching a book to continuous in the settings sheet is saved and restored on reopening, and other books keep their own mode (FR-009); semantics actions "Next page" / "Previous page" exist on the page view (FR-040)
 
 ### Implementation for User Story 2
 
-- [ ] T030 [P] [US2] Implement `pagedSnap` and `continuousStep` in lib/features/reader/domain/paged_snap.dart; make T028 pass
-- [ ] T031 [US2] Implement paged mode in lib/core/document/pdf/pdf_paged_layout.dart per the T003 outcome: horizontal one-page-per-slot `layoutPages` relaid out on view size change, `normalizeMatrix` keeping the view inside the current page, snapping on interaction end through `pagedSnap`, and turns that keep the zoom relative to the normal view and show the new page from its top-left corner (FR-006, FR-019, FR-021); or the `PageView` fallback if the spike chose it
-- [ ] T032 [US2] Implement `next` / `previous` in lib/core/document/pdf/pdf_view_controller.dart for both modes (contract rows 2 and 3) and switch the view factory between paged and continuous from `ReaderViewConfig.mode`, keeping the position (FR-015)
-- [ ] T033 [P] [US2] Implement the keyboard map in lib/features/reader/ui/reader_shortcuts.dart (`Shortcuts` + `Actions` on the reader's focus node, contracts/reader-ui.md "Keys")
-- [ ] T034 [US2] Create lib/features/reader/ui/settings_sheet.dart with the page-mode choice (Paged / Continuous, saved per book through `ReaderRepository.setPageMode`), open it from the Settings button (FR-005); wire edge-tap results, shortcuts and semantics actions in reader_screen.dart; make T029 pass
+- [X] T030 [P] [US2] Implement `pagedSnap` and `continuousStep` in lib/core/document/paged_snap.dart; make T028 pass
+- [X] T031 [US2] Implement paged mode in lib/core/document/pdf/pdf_paged_layout.dart per the T003 outcome: horizontal one-page-per-slot `layoutPages` relaid out on view size change, `normalizeMatrix` keeping the view inside the current page, snapping on interaction end through `pagedSnap`, and turns that keep the zoom relative to the normal view and show the new page from its top-left corner (FR-006, FR-019, FR-021); or the `PageView` fallback if the spike chose it
+- [X] T032 [US2] Implement `next` / `previous` in lib/core/document/pdf/pdf_view_controller.dart for both modes (contract rows 2 and 3) and switch the view factory between paged and continuous from `ReaderViewConfig.mode`, keeping the position (FR-015)
+- [X] T033 [P] [US2] Implement the keyboard map in lib/features/reader/ui/reader_shortcuts.dart (`Shortcuts` + `Actions` on the reader's focus node, contracts/reader-ui.md "Keys")
+- [X] T034 [US2] Create lib/features/reader/ui/settings_sheet.dart with the page-mode choice (Paged / Continuous, saved per book through `ReaderRepository.setPageMode`), open it from the Settings button (FR-005); wire edge-tap results, shortcuts and semantics actions in reader_screen.dart; make T029 pass
 
 **Checkpoint**: Both modes work with every input; the mode is per book.
 
@@ -117,13 +117,13 @@ on its own.
 
 ### Tests for User Story 3 (write first, confirm they fail) ⚠️
 
-- [ ] T035 [P] [US3] Widget-test resume in test/widget/reader_resume_test.dart: a saved `(57, 0.5)` is passed as `initialPosition`; emitted positions are saved within 1 s; leaving the reader saves at once; `AppLifecycleState.paused` and `hidden` flush the saver (FR-011); a 001 row (page 12, offset 0, mode null) opens on page 12 in paged mode (FR-014); the library shows 57% for page 57 of 100 after leaving (FR-013)
-- [ ] T036 [P] [US3] Widget-test position keeping in test/widget/reader_keep_position_test.dart: changing the view size (rotation, window resize), the mode, the fit or the theme calls `goTo` with the position held before the change (FR-015)
+- [X] T035 [P] [US3] Widget-test resume in test/widget/reader_resume_test.dart: a saved `(57, 0.5)` is passed as `initialPosition`; emitted positions are saved within 1 s; leaving the reader saves at once; `AppLifecycleState.paused` and `hidden` flush the saver (FR-011); a 001 row (page 12, offset 0, mode null) opens on page 12 in paged mode (FR-014); the library shows 57% for page 57 of 100 after leaving (FR-013)
+- [X] T036 [P] [US3] Widget-test position keeping in test/widget/reader_keep_position_test.dart: changing the view size (rotation, window resize), the mode, the fit or the theme calls `goTo` with the position held before the change (FR-015)
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] In lib/features/reader/ui/reader_screen.dart observe the app lifecycle (`AppLifecycleListener`) and flush the `ProgressSaver` on pause / hide; save on every route exit (back button, gesture, Esc, Back control); make T035 pass
-- [ ] T038 [US3] Keep the position across view-size, mode, fit and theme changes: the reader screen holds the last `ReadingPosition` and re-applies it with `goTo(animate: false)` after the view rebuilds; in lib/core/document/pdf/pdf_document_view.dart re-apply on `onViewSizeChanged`; make T036 pass
+- [X] T037 [US3] In lib/features/reader/ui/reader_screen.dart observe the app lifecycle (`AppLifecycleListener`) and flush the `ProgressSaver` on pause / hide; save on every route exit (back button, gesture, Esc, Back control); make T035 pass
+- [X] T038 [US3] Keep the position across view-size, mode, fit and theme changes: the reader screen holds the last `ReadingPosition` and re-applies it with `goTo(animate: false)` after the view rebuilds; in lib/core/document/pdf/pdf_document_view.dart re-apply on `onViewSizeChanged`; make T036 pass
 
 **Checkpoint**: P1 stories US1–US3 done except zoom; resume is exact.
 

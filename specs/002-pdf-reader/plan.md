@@ -111,6 +111,8 @@ lib/
 │   ├── document/
 │   │   ├── document_format.dart          # + outline, links, page text, page image, view contract
 │   │   ├── reading_position.dart         # page + offset within the page (research R4)
+│   │   ├── paged_snap.dart               # swipe → turn / snap back; continuous step
+│   │   ├── page_unavailable.dart         # placeholder for a page that can't be shown
 │   │   └── pdf/
 │   │       ├── pdf_document_format.dart  # + loadOutline/loadLinks/loadPageText/renderPageImage
 │   │       ├── pdf_document_view.dart    # PdfViewer setup for both modes, filters, highlights
@@ -125,7 +127,6 @@ lib/
         ├── reader.dart                   # deferred entry point (replaces basic_page_view.dart)
         ├── domain/                       # pure Dart, unit tested first
         │   ├── tap_zones.dart
-        │   ├── paged_snap.dart
         │   ├── page_number_input.dart
         │   ├── jump_back.dart
         │   ├── outline.dart              # current chapter

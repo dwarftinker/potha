@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:pdfrx/pdfrx.dart';
 
 import '../document_format.dart';
+import '../paged_snap.dart';
 
 class PdfViewController extends ChangeNotifier implements DocumentViewController {
   PdfViewController() {
@@ -116,7 +117,7 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   }
 
   /// One view height less about one line (FR-007), in document units.
-  double get _screenStep => (viewSize.height - viewSize.height / 24) / pdf.currentZoom;
+  double get _screenStep => continuousStep(viewSize.height) / pdf.currentZoom;
 
   Future<void> _scrollDocument(double dy) async {
     if (!isReady) return;

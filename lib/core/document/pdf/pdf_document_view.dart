@@ -11,6 +11,7 @@ import 'package:pdfrx/pdfrx.dart';
 import '../document_format.dart';
 import '../page_unavailable.dart';
 import 'pdf_document_format.dart';
+import 'pdf_paged_layout.dart';
 import 'pdf_view_controller.dart';
 
 /// Gap between pages in continuous mode, in view pixels.
@@ -72,7 +73,10 @@ class PdfDocumentView extends StatefulWidget {
 
 class _PdfDocumentViewState extends State<PdfDocumentView> {
   late final _ref = PdfDocumentRefDirect(widget.document.document, autoDispose: false);
+  late final _drag = PagedDragHandler(widget.controller);
   Size _view = Size.zero;
+
+  bool get _paged => widget.config.mode == PageMode.paged;
 
   PdfViewController get _c => widget.controller;
 
@@ -81,6 +85,7 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     super.initState();
     _c
       ..mode = widget.config.mode
+      ..currentPage = widget.config.initialPosition.page
       ..onPositionChanged = widget.config.onPositionChanged;
   }
 
@@ -91,7 +96,9 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     if (old.config.mode != widget.config.mode || old.config.fit != widget.config.fit) {
       // Keep the reader's place across a layout change (FR-015).
       final keep = _c.position;
-      _c.mode = widget.config.mode;
+      _c
+        ..mode = widget.config.mode
+        ..currentPage = keep.page;
       _afterLayout(() => _c.goTo(keep, animate: false));
     }
   }
@@ -106,7 +113,15 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     final sizes = [
       for (var i = 0; i < pages.length; i++) widget.document.pageSize(i + 1),
     ];
-    return continuousLayout(sizes, view, widget.config.fit);
+    return _paged
+        ? pagedLayout(sizes, view, widget.config.fit)
+        : continuousLayout(sizes, view, widget.config.fit);
+  }
+
+  Matrix4 _normalize(Matrix4 m, Size viewSize, PdfPageLayout layout, PdfViewerController? c) {
+    if (!_paged || _view.isEmpty || layout.pageLayouts.isEmpty) return m;
+    return clampToPage(m,
+        layout: layout, view: _view, page: _c.currentPage, sliding: _drag.sliding);
   }
 
   @override
@@ -121,11 +136,14 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
         // Rotation or a window resize: stay on the same content (FR-015).
         if (keep != null) _afterLayout(() => _c.goTo(keep, animate: false));
       }
-      return PdfViewer(
+      final viewer = PdfViewer(
         _ref,
         controller: _c.pdf,
         params: PdfViewerParams(
           layoutPages: _layoutPages,
+          // Paged mode moves the view itself (PagedDragHandler); pinch stays with pdfrx.
+          panEnabled: !_paged,
+          normalizeMatrix: _paged ? _normalize : null,
           margin: 0,
           backgroundColor: config.backgroundColor,
           sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
@@ -147,6 +165,14 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
               const Positioned.fill(child: PageUnavailable()),
           ],
         ),
+      );
+      if (!_paged) return viewer;
+      return Listener(
+        onPointerDown: _drag.onDown,
+        onPointerMove: _drag.onMove,
+        onPointerUp: _drag.onUp,
+        onPointerCancel: _drag.onCancel,
+        child: viewer,
       );
     });
   }

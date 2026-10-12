@@ -19,11 +19,15 @@ import '../domain/auto_hide.dart';
 import '../domain/tap_zones.dart';
 import '../progress_saver.dart';
 import 'reader_bars.dart';
+import 'reader_shortcuts.dart';
+import 'settings_sheet.dart';
 import 'tap_detector.dart';
 
 /// View builders per format id. Overridden in tests.
-final documentViewFactoriesProvider = Provider<Map<String, DocumentViewFactory>>(
-    (ref) => const {'pdf': PdfDocumentViewFactory()});
+final documentViewFactoriesProvider =
+    Provider<Map<String, DocumentViewFactory>>(
+      (ref) => const {'pdf': PdfDocumentViewFactory()},
+    );
 
 class ReaderScreen extends ConsumerStatefulWidget {
   const ReaderScreen({super.key, required this.bookId});
@@ -48,10 +52,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// The latest position the view reported.
   ReadingPosition _position = const ReadingPosition(1, 0);
   PageMode _mode = PageMode.paged;
-  ReaderPreference _prefs =
-      const ReaderPreference(id: 1, theme: ReadingTheme.light, fit: PageFit.fitWidth);
+  ReaderPreference _prefs = const ReaderPreference(
+    id: 1,
+    theme: ReadingTheme.light,
+    fit: PageFit.fitWidth,
+  );
   StreamSubscription<ReaderPreference>? _prefsSub;
   final _controls = AutoHide();
+  late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
   late final ReaderRepository _repo = ref.read(readerRepositoryProvider);
@@ -62,6 +70,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _repo;
     _controls.addListener(_controlsChanged);
     _setSystemBars(visible: false);
+    _lifecycle = AppLifecycleListener(
+      // The system may end the app while it is in the background (FR-011).
+      onHide: () => _saver?.flush(),
+      onPause: () => _saver?.flush(),
+    );
     _open();
   }
 
@@ -77,8 +90,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   /// On phones and tablets the system bars come and go with the reader's (FR-004).
-  void _setSystemBars({required bool visible}) => SystemChrome.setEnabledSystemUIMode(
-      visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky);
+  void _setSystemBars({required bool visible}) =>
+      SystemChrome.setEnabledSystemUIMode(
+        visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
+      );
 
   Future<void> _open() async {
     final library = ref.read(libraryRepositoryProvider);
@@ -90,10 +105,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
       final file = await ref.read(bookFileStoreProvider).find(book.id);
       if (file == null) {
-        return _fail('This book’s file is missing. Remove it from the library and add it again.');
+        return _fail(
+          'This book’s file is missing. Remove it from the library and add it again.',
+        );
       }
-      final format = ref.read(documentFormatsProvider).firstWhere((f) => f.id == book.format);
-      final stored = book.isPasswordProtected ? await passwords.read(book.id) : null;
+      final format = ref
+          .read(documentFormatsProvider)
+          .firstWhere((f) => f.id == book.format);
+      final stored = book.isPasswordProtected
+          ? await passwords.read(book.id)
+          : null;
 
       final doc = await format.open(
         file,
@@ -101,8 +122,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         askPassword: ({required retry}) async {
           if (!mounted) return null;
           // A failed stored password counts as a wrong password.
-          return showPasswordDialog(context,
-              fileName: book.title, retry: retry || stored != null);
+          return showPasswordDialog(
+            context,
+            fileName: book.title,
+            retry: retry || stored != null,
+          );
         },
       );
       if (!mounted) {
@@ -114,8 +138,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       }
       final saved = await _repo.loadPosition(book.id);
       final mode = await _repo.pageMode(book.id);
-      final start = ReadingPosition.clamped(saved?.page ?? 1, saved?.offsetY ?? 0,
-          pageCount: doc.pageCount);
+      final start = ReadingPosition.clamped(
+        saved?.page ?? 1,
+        saved?.offsetY ?? 0,
+        pageCount: doc.pageCount,
+      );
       _prefsSub = _repo.watchPreferences().listen((p) {
         if (mounted) setState(() => _prefs = p);
       });
@@ -130,18 +157,21 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         _view = factory.createController();
         _mode = mode;
         _start = _position = start;
-        _saver = ProgressSaver(
-          pageCount: doc.pageCount,
-          save: (p) => _repo.savePosition(book.id, p),
-        )
-          // The view only reports changes; record the starting position too, so an
-          // opened book is never shown as "New" again.
-          ..positionChanged(start);
+        _saver =
+            ProgressSaver(
+                pageCount: doc.pageCount,
+                save: (p) => _repo.savePosition(book.id, p),
+              )
+              // The view only reports changes; record the starting position too, so an
+              // opened book is never shown as "New" again.
+              ..positionChanged(start);
       });
     } on DocumentOpenException catch (e) {
-      _fail(e.kind == DocumentOpenFailure.passwordCancelled
-          ? 'This book needs its password to open.'
-          : 'This book could not be opened. The file may be damaged.');
+      _fail(
+        e.kind == DocumentOpenFailure.passwordCancelled
+            ? 'This book needs its password to open.'
+            : 'This book could not be opened. The file may be damaged.',
+      );
     } catch (_) {
       _fail('This book could not be opened.');
     }
@@ -153,6 +183,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _controls
       ..removeListener(_controlsChanged)
       ..dispose();
@@ -171,15 +202,22 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (pageChanged && mounted) {
       setState(() {});
       // FR-040: screen-reader users hear where they are.
-      SemanticsService.sendAnnouncement(View.of(context),
-          'Page ${position.page} of ${_doc!.pageCount}', Directionality.of(context));
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        'Page ${position.page} of ${_doc!.pageCount}',
+        Directionality.of(context),
+      );
     }
   }
 
   void _onTap(Offset global, Offset local, double viewWidth) {
     final view = _view!;
     final point = view.pagePointAt(global);
-    final action = classifyTap(x: local.dx, viewWidth: viewWidth, pagePoint: point);
+    final action = classifyTap(
+      x: local.dx,
+      viewWidth: viewWidth,
+      pagePoint: point,
+    );
     switch (action) {
       case ToggleControls():
         _controls.toggle();
@@ -194,21 +232,63 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _back() => Navigator.of(context).maybePop();
 
+  Future<void> _setMode(PageMode mode) async {
+    if (mode == _mode) return;
+    setState(() => _mode = mode);
+    await _repo.setPageMode(widget.bookId, mode);
+  }
+
+  /// Opens a sheet or dialog with the controls held up until it closes (FR-003).
+  Future<void> _withControlsHeld(Future<void> Function() show) async {
+    _controls.hold();
+    try {
+      await show();
+    } finally {
+      _controls.release();
+    }
+  }
+
+  void _openSettings() => _withControlsHeld(
+    () => showReaderSettings(
+      context,
+      initial: ReaderSettings(
+        mode: _mode,
+        fit: _prefs.fit,
+        theme: _prefs.theme,
+      ),
+      onMode: _setMode,
+    ),
+  );
+
+  ReaderKeyHandlers get _keys => ReaderKeyHandlers(
+    next: () => _view!.next(),
+    previous: () => _view!.previous(),
+    first: () => _view!.goTo(const ReadingPosition(1, 0)),
+    last: () => _view!.goTo(ReadingPosition(_doc!.pageCount, 0)),
+    scrollStep: (f) => _view!.scrollBy(f),
+    zoomIn: () => _view!.zoomIn(),
+    zoomOut: () => _view!.zoomOut(),
+    leave: _back,
+  );
+
   Future<void> _jumpTo(int page) async {
     await _view!.goTo(ReadingPosition(page, 0));
   }
 
   BarColors get _barColors {
     final scheme = Theme.of(context).colorScheme;
-    return BarColors(background: scheme.surfaceContainer, foreground: scheme.onSurface);
+    return BarColors(
+      background: scheme.surfaceContainer,
+      foreground: scheme.onSurface,
+    );
   }
 
   ReaderViewConfig _config() => ReaderViewConfig(
-        mode: _mode,
-        fit: _prefs.fit,
-        initialPosition: _start,
-        onPositionChanged: _onPositionChanged,
-      );
+    mode: _mode,
+    fit: _prefs.fit,
+    initialPosition: _start,
+    onPositionChanged: _onPositionChanged,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -217,58 +297,89 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (error != null) return Scaffold(body: _ErrorMessage(message: error));
     if (doc == null) {
       return const Scaffold(
-          body: Center(child: CircularProgressIndicator(semanticsLabel: 'Opening book')));
+        body: Center(
+          child: CircularProgressIndicator(semanticsLabel: 'Opening book'),
+        ),
+      );
     }
     final colors = _barColors;
+    final view = _view!;
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: LayoutBuilder(
-              builder: (context, constraints) => TapDetector(
-                movement: _view,
-                onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
-                child: _factory!.build(doc, controller: _view!, config: _config()),
-              ),
-            ),
-          ),
-          IgnorePointer(
-            key: const ValueKey('reader-controls'),
-            ignoring: !_controls.visible,
-            child: ExcludeSemantics(
-              excluding: !_controls.visible,
-              child: AnimatedOpacity(
-                opacity: _controls.visible ? 1 : 0,
-                duration: const Duration(milliseconds: 150),
-                child: Listener(
-                  // Any touch on the bars counts as using them (FR-003).
-                  onPointerDown: (_) => _controls.interacted(),
-                  behavior: HitTestBehavior.translucent,
-                  child: Column(
-                    children: [
-                      ReaderTopBar(
-                        title: _book?.title ?? '',
-                        colors: colors,
-                        onBack: _back,
-                      ),
-                      const Spacer(),
-                      ReaderBottomBar(
-                        page: _position.page,
-                        pageCount: doc.pageCount,
-                        colors: colors,
-                        onSliderStart: _controls.hold,
-                        onSliderEnd: (page) {
-                          _controls.release();
-                          _jumpTo(page);
-                        },
-                      ),
-                    ],
+      body: ReaderShortcuts(
+        handlers: _keys,
+        continuous: _mode == PageMode.continuous,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Semantics(
+                key: const ValueKey('reader-page-view'),
+                container: true,
+                label: 'Page ${_position.page} of ${doc.pageCount}',
+                // Screen-reader users turn pages without the edge zones (FR-040).
+                customSemanticsActions: {
+                  const CustomSemanticsAction(label: 'Next page'): view.next,
+                  const CustomSemanticsAction(label: 'Previous page'):
+                      view.previous,
+                },
+                child: LayoutBuilder(
+                  builder: (context, constraints) => TapDetector(
+                    movement: view,
+                    onTap: (global, local) =>
+                        _onTap(global, local, constraints.maxWidth),
+                    child: _factory!.build(
+                      doc,
+                      controller: view,
+                      config: _config(),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            IgnorePointer(
+              key: const ValueKey('reader-controls'),
+              ignoring: !_controls.visible,
+              child: ExcludeSemantics(
+                excluding: !_controls.visible,
+                child: AnimatedOpacity(
+                  opacity: _controls.visible ? 1 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Listener(
+                    // Any touch on the bars counts as using them (FR-003).
+                    onPointerDown: (_) => _controls.interacted(),
+                    behavior: HitTestBehavior.translucent,
+                    child: Column(
+                      children: [
+                        ReaderTopBar(
+                          title: _book?.title ?? '',
+                          colors: colors,
+                          onBack: _back,
+                          actions: [
+                            IconButton(
+                              icon: const Icon(Icons.tune),
+                              tooltip: 'Reader settings',
+                              onPressed: _openSettings,
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        ReaderBottomBar(
+                          page: _position.page,
+                          pageCount: doc.pageCount,
+                          colors: colors,
+                          onSliderStart: _controls.hold,
+                          onSliderEnd: (page) {
+                            _controls.release();
+                            _jumpTo(page);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -281,21 +392,25 @@ class _ErrorMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 16),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to library'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 48,
+            color: Theme.of(context).colorScheme.error,
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Back to library'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
