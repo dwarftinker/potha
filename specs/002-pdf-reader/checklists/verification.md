@@ -52,10 +52,11 @@ Release build (`tool/build_web.sh`) served from the computer over `adb reverse`
   The user chose to keep the current behaviour and wait for pdfrx colour-scheme rendering
   (`upstream-request.md`, not yet posted) rather than gentler themes or detecting photos
   ourselves.
+- Wake lock (FR-029, T075): with a 30 s screen timeout, the screen stayed on with a book
+  open in Chrome. Pass.
 
 ## Still to do
 
-- T075: check the wake lock in Chrome on a phone (over `adb reverse`).
 - T076: walk through quickstart scenarios 1–33 by hand on the S24 and in Chrome (desktop
   and phone): feel of swipes and edge taps, themes on real books, TalkBack, 200% text,
   offline, and SC-009 (someone new finds the contents and dark theme).

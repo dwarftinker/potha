@@ -13,8 +13,7 @@ with GitHub Spec Kit.
   `specs/001-library-and-import/checklists/verification.md`.
 - Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`. Device tests and
   every performance target pass on the Galaxy S24 (`specs/002-pdf-reader/checklists/
-  verification.md`). Open: T075 (wake lock in Chrome) and T076 (manual quickstart run on
-  the phone and in browsers).
+  verification.md`). Open: T076 (manual quickstart run on the phone and in browsers).
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -158,7 +157,7 @@ Once per project: `/speckit.constitution`. Then, for each feature:
 ## Next steps
 
 1. Finish verifying 002: quickstart scenarios 1–33 by hand on the S24 and in Chrome
-   (T076), and the wake lock in Chrome (T075); record them in
+   (T076); record them in
    `specs/002-pdf-reader/checklists/verification.md`.
 2. Approve or edit the upstream pdfrx request (`specs/002-pdf-reader/upstream-request.md`,
    covers 001 T077 and 002 T077) before it is posted.
