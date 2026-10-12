@@ -180,6 +180,6 @@ No constitution violations. One spec-coverage issue, resolved by rewording the s
 |---|---|---|
 | FR-028 ("photos never shown as negatives") is only partly met in the dark theme: colour photos keep their hues, but their light and dark areas swap, and greyscale photos look inverted (research R5). | Keeping photos intact needs PDFium colour-scheme rendering or image bounds, which pdfrx 2.6.5 does not expose (native or web). | Forking pdfrx's web worker and native API: ongoing maintenance across two runtimes (Principle VIII). A fragment shader: still inverts greyscale photos, and the web renderer does not support shader image filters. |
 
-Resolution (agreed 2026-10-12): FR-028 is reworded and User Story 6 scenario 2 to "photographs keep
-recognisable hues". Ask pdfrx upstream for colour-scheme rendering together with T077
+Resolution (agreed 2026-10-12): FR-028 and User Story 6 scenario 2 now say
+"photographs keep recognisable colours". Ask pdfrx upstream for colour-scheme rendering together with T077
 (both need approval, being public), and adopt it when it ships.
