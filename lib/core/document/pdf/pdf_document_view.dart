@@ -102,8 +102,18 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
       _c
         ..mode = widget.config.mode
         ..currentPage = keep.page;
-      _afterLayout(() => _c.goTo(keep, animate: false));
+      _restore(keep);
     }
+  }
+
+  /// Puts the reader back on [keep] after a layout change (FR-015). pdfrx also moves to
+  /// its own guess of the current page, with a short animation that can finish after our
+  /// first move, so the position is applied again once that has settled.
+  void _restore(ReadingPosition keep) {
+    _afterLayout(() => _c.goTo(keep, animate: false));
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (mounted && !_c.position.isNearlySameAs(keep)) _c.goTo(keep, animate: false);
+    });
   }
 
   void _afterLayout(VoidCallback action) => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -129,7 +139,7 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
   /// Zoom limits from the current page as laid out at the normal view (FR-018).
   ZoomRange _zoomRange(Size view) {
     if (view.isEmpty) return const ZoomRange(1, 5);
-    final page = widget.document.pageSize(_c.isReady ? _c.position.page : 1);
+    final page = widget.document.pageSize(_c.lastPosition.page.clamp(1, widget.document.pageCount));
     final s = fitScale(page.width, page.height, view, widget.config.fit);
     return zoomRange(pageAtNormal: page * s, view: view);
   }
@@ -177,7 +187,7 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           _view = size;
           _c.viewSize = size;
           // Rotation or a window resize: stay on the same content (FR-015).
-          if (keep != null) _afterLayout(() => _c.goTo(keep, animate: false));
+          if (keep != null) _restore(keep);
         }
         final range = _zoomRange(size);
         _c

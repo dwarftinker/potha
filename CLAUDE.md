@@ -11,10 +11,10 @@ with GitHub Spec Kit.
   mobile Chrome; 77 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac),
   T077 (upstream pdfrx issue, needs approval). See
   `specs/001-library-and-import/checklists/verification.md`.
-- Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`: all eight stories
-  pass host tests (unit, widget, and widget tests with real PDFium). Not yet verified on
-  the Galaxy S24 or in a browser; the device tests (T070–T072) are written but not run.
-  See `specs/002-pdf-reader/tasks.md`.
+- Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`. Device tests and
+  every performance target pass on the Galaxy S24 (`specs/002-pdf-reader/checklists/
+  verification.md`). Open: T075 (wake lock in Chrome) and T076 (manual quickstart run on
+  the phone and in browsers).
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -119,6 +119,11 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
 - Reader widget tests use fakes from `test/widget/reader_test_app.dart`; popping the
   reader needs several 100 ms pumps before the screen is disposed (`leaveReader`).
 - Formatting: `dart format -l 100` (the project's line width).
+- Device tests: register the test text input before `enterText`
+  (`useTestTextInput`), find books with the library search (new books sort last), and use
+  `systemBack` (the reader has no app bar). The S24's 30 s screen timeout can lock the
+  phone mid-run; raise it while testing
+  (`adb shell settings put system screen_off_timeout 1800000`) and restore it (30000).
 - Pinned on purpose: `wakelock_plus` 1.8.0 (revisit after 2026-10-13) and
   `package_info_plus` 10.2.1 (revisit after 2026-10-15), both under two weeks old.
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
@@ -152,9 +157,9 @@ Once per project: `/speckit.constitution`. Then, for each feature:
 
 ## Next steps
 
-1. Verify 002 on the Galaxy S24 and in Chrome (desktop and phone): run the device tests
-   (T070–T072) and quickstart scenarios 1–33 (T076), check the wake lock in Chrome (T075),
-   and record results in `specs/002-pdf-reader/checklists/verification.md`.
+1. Finish verifying 002: quickstart scenarios 1–33 by hand on the S24 and in Chrome
+   (T076), and the wake lock in Chrome (T075); record them in
+   `specs/002-pdf-reader/checklists/verification.md`.
 2. Approve or edit the upstream pdfrx request (`specs/002-pdf-reader/upstream-request.md`,
    covers 001 T077 and 002 T077) before it is posted.
 3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline

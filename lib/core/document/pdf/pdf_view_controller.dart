@@ -46,10 +46,19 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   /// The visible area in document coordinates.
   Rect get visibleRect => pdf.visibleRect;
 
+  /// The last position reported, without asking pdfrx (safe during layout).
+  ReadingPosition get lastPosition => _lastReported ?? ReadingPosition(currentPage, 0);
+
   @override
   ReadingPosition get position {
-    if (!isReady) return _lastReported ?? const ReadingPosition(1, 0);
-    final top = visibleRect.top;
+    if (!isReady) return lastPosition;
+    final double top;
+    try {
+      top = visibleRect.top;
+    } catch (_) {
+      // pdfrx has a document but no view size yet (its viewer is being laid out).
+      return lastPosition;
+    }
     final pages = _layout.pageLayouts;
     if (mode == PageMode.paged) {
       final rect = pages[currentPage - 1];

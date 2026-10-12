@@ -96,6 +96,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _controls.addListener(_controlsChanged);
     _jumpBack.addListener(_rebuild);
     _setSystemBars(visible: false);
+    // A library snackbar ("Book added") would sit over the reader's bottom bar.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+    });
     _lifecycle = AppLifecycleListener(
       // The system may end the app while it is in the background (FR-011).
       onHide: () {

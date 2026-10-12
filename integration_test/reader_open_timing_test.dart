@@ -17,16 +17,14 @@ void main() {
 
   Future<int> timeReopen(WidgetTester tester, String title) async {
     // First open, so the book counts as previously opened; move into the book.
-    var view = await openBook(tester, title);
+    final view = await openBook(tester, title);
     view.goTo(ReadingPosition(view.pdf.pageCount ~/ 2, 0.3), animate: false);
     await settleFor(tester, const Duration(milliseconds: 600));
-    await tester.pageBack();
+    await systemBack(tester);
     await settleFor(tester, const Duration(seconds: 1));
-    final watch = Stopwatch()..start();
-    view = await openBookFast(tester, title);
-    watch.stop();
-    expect(view.position.page, view.pdf.pageCount ~/ 2);
-    return watch.elapsedMilliseconds;
+    final (reopened, ms) = await openBookTimed(tester, title);
+    expect(reopened.position.page, reopened.pdf.pageCount ~/ 2);
+    return ms;
   }
 
   testWidgets(
@@ -47,7 +45,7 @@ void main() {
 
       // SC-001: a previously opened book shows its page in under 2 s.
       final shortMs = await timeReopen(tester, short);
-      await tester.pageBack();
+      await systemBack(tester);
       await settleFor(tester, const Duration(seconds: 1));
       final longMs = await timeReopen(tester, long);
       // ignore: avoid_print
@@ -70,7 +68,7 @@ void main() {
       // ignore: avoid_print
       print('jumps: $jumps ms (SC-006 < 1000)');
       expect(jumps.every((ms) => ms < 1000), isTrue);
-      await tester.pageBack();
+      await systemBack(tester);
       await settleFor(tester, const Duration(seconds: 1));
 
       // SC-007: first search results within 2 s, and reading stays smooth meanwhile.

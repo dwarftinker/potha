@@ -32,6 +32,10 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   Future<void> showControls(WidgetTester tester) async {
+    // Let any page animation finish: a tap while the page moves is not a tap.
+    await settleFor(tester, const Duration(milliseconds: 500));
+    final controls = find.byKey(const ValueKey('reader-controls'));
+    if (!tester.widget<IgnorePointer>(controls).ignoring) return;
     final size = tester.getSize(find.byType(Scaffold).last);
     await tester.tapAt(Offset(size.width / 2, size.height / 2));
     await settleFor(tester, const Duration(milliseconds: 300));
@@ -74,6 +78,7 @@ void main() {
     await settleFor(tester, const Duration(milliseconds: 600));
     await tester.tap(find.text('Chapter Three'));
     await pumpUntilTrue(tester, () => view.position.page == 9, reason: 'contents jump');
+    await settleFor(tester, const Duration(milliseconds: 500));
     await tester.tap(find.text('Back to page 3'));
     await pumpUntilTrue(tester, () => view.position.page == 3, reason: 'back step');
 
@@ -84,6 +89,7 @@ void main() {
     final link = globalOnPage(view, 1, const Offset(186 / 612, (792 - 620) / 792));
     await tester.tapAt(link);
     await pumpUntilTrue(tester, () => view.position.page == 9, reason: 'link to page 9');
+    await settleFor(tester, const Duration(milliseconds: 500));
 
     // Continuous mode keeps the place (FR-015).
     await showControls(tester);
@@ -100,11 +106,14 @@ void main() {
     await showControls(tester);
     await tester.tap(find.byTooltip('Search in book'));
     await settleFor(tester, const Duration(milliseconds: 600));
+    useTestTextInput(tester);
     await tester.enterText(find.byType(TextField), 'WHALE');
     await pumpUntil(tester, find.text('2 matches'));
     await tester.tap(find.text('Page 11'));
     await pumpUntilTrue(tester, () => view.position.page == 11, reason: 'search jump');
-    expect(find.text('Match 2 of 2'), findsOneWidget);
+    await settleFor(tester, const Duration(milliseconds: 500));
+    // Search starts at the current page (9) and wraps, so page 11 is the first match.
+    expect(find.text('Match 1 of 2'), findsOneWidget);
     await tester.tap(find.byTooltip('Close search'));
     await settleFor(tester, const Duration(milliseconds: 300));
 
@@ -121,13 +130,13 @@ void main() {
     view.goTo(const ReadingPosition(7, 0.4), animate: false);
     await settleFor(tester, const Duration(milliseconds: 500));
     final left = view.position;
-    await tester.pageBack();
+    await systemBack(tester);
     await settleFor(tester, const Duration(seconds: 1));
     view = await openBook(tester, title);
     expect(view.position.page, left.page);
     expect(view.position.offsetY, closeTo(left.offsetY, 0.02));
     expect(view.mode, PageMode.continuous);
-    await tester.pageBack();
+    await systemBack(tester);
     await settleFor(tester, const Duration(seconds: 1));
   });
 
@@ -146,13 +155,13 @@ void main() {
       view.goTo(target, animate: false);
       await settleFor(tester, const Duration(milliseconds: 400));
       final left = view.position;
-      await tester.pageBack();
+      await systemBack(tester);
       await settleFor(tester, const Duration(milliseconds: 600));
       view = await openBook(tester, title);
       if (view.position.page == left.page && (view.position.offsetY - left.offsetY).abs() < 0.02) {
         correct++;
       }
-      await tester.pageBack();
+      await systemBack(tester);
       await settleFor(tester, const Duration(milliseconds: 600));
     }
     // ignore: avoid_print
@@ -176,6 +185,6 @@ void main() {
       await pumpUntilTrue(tester, () => view.position.page == p, reason: 'page $p');
     }
     expect(tester.takeException(), isNull);
-    await tester.pageBack();
+    await systemBack(tester);
   });
 }

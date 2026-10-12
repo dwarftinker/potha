@@ -22,17 +22,14 @@ void main() {
     await settleFor(tester, const Duration(milliseconds: 400));
     view.next();
     await pumpUntilTrue(tester, () => view.position.page == 3, reason: 'page 3');
-    await tester.pageBack();
+    await systemBack(tester);
     await pumpUntil(tester, find.text('100%'));
 
     // Reopen: starts at page 3, with content inside 2 s.
-    final watch = Stopwatch()..start();
-    final reopened = await openBook(tester, title);
-    watch.stop();
+    final (reopened, ms) = await openBookTimed(tester, title);
     expect(reopened.position.page, 3);
     // ignore: avoid_print
-    print('reopen: ${watch.elapsedMilliseconds} ms');
-    expect(watch.elapsed, lessThan(const Duration(seconds: 2)),
-        reason: 'Opening took ${watch.elapsedMilliseconds} ms');
+    print('reopen: $ms ms');
+    expect(ms, lessThan(2000), reason: 'Opening took $ms ms');
   });
 }

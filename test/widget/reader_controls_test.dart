@@ -109,4 +109,16 @@ void main() {
     expect(systemUi.last, 'SystemUiMode.edgeToEdge');
     await closeReader(tester, app);
   });
+
+  testWidgets('a library snackbar does not stay over the reader', (tester) async {
+    final (app, _) = await openReader(tester, FakeReaderDocument(), before: (app) async {
+      final context = tester.element(find.text('Library'));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Book added'), duration: Duration(minutes: 1)));
+      await tester.pump();
+    });
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Book added'), findsNothing);
+    await closeReader(tester, app);
+  });
 }

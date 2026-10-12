@@ -276,16 +276,49 @@ Future<void> importBook(WidgetTester tester, String title, Uint8List bytes) asyn
   await containerOf(tester).read(importControllerProvider.notifier).importSources(
       [await sourceViaFile('$title.pdf', bytes)],
       askPassword: (_, {required retry}) async => null);
-  await pumpUntil(tester, find.text(title));
+  await settleFor(tester, const Duration(milliseconds: 500));
+  await scrollToBook(tester, title);
 }
 
 /// The open reader's view controller.
 PdfViewController readerView(WidgetTester tester) =>
     tester.widget<PdfDocumentView>(find.byType(PdfDocumentView)).controller;
 
+/// Taps [title] in the library: clears the import snackbar and scrolls the book into view.
+Future<void> tapBook(WidgetTester tester, String title) async {
+  ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first)).clearSnackBars();
+  await settleFor(tester, const Duration(milliseconds: 400));
+  await scrollToBook(tester, title);
+  await tester.tap(find.descendant(of: find.byType(Scrollable), matching: find.text(title)).first);
+}
+
+/// On a device, enterText only reaches a field through the test text input.
+void useTestTextInput(WidgetTester tester) {
+  if (!tester.testTextInput.isRegistered) tester.testTextInput.register();
+}
+
+/// Finds [title] with the library's search, so it is on screen however long the
+/// library is (new, never-opened books sort to the end).
+Future<void> scrollToBook(WidgetTester tester, String title) async {
+  useTestTextInput(tester);
+  if (find.byType(TextField).evaluate().isEmpty) {
+    await tester.tap(find.byTooltip('Search library'));
+    await settleFor(tester, const Duration(milliseconds: 300));
+  }
+  await tester.enterText(find.byType(TextField), title);
+  await settleFor(tester, const Duration(milliseconds: 800));
+  FocusManager.instance.primaryFocus?.unfocus();
+  await settleFor(tester, const Duration(milliseconds: 300));
+  final book = find.descendant(of: find.byType(Scrollable), matching: find.text(title));
+  if (book.evaluate().isEmpty) {
+    final texts = find.byType(Text).evaluate().map((e) => (e.widget as Text).data).whereType<String>();
+    throw TestFailure('Book "$title" not in the library; showing: ${texts.take(40).join(' | ')}');
+  }
+}
+
 /// Opens [title] from the library and waits until its page view is ready.
 Future<PdfViewController> openBook(WidgetTester tester, String title) async {
-  await tester.tap(find.text(title).first);
+  await tapBook(tester, title);
   await pumpUntil(tester, find.byType(PdfDocumentView));
   final view = readerView(tester);
   await pumpUntilTrue(tester, () => view.isReady);
@@ -293,14 +326,23 @@ Future<PdfViewController> openBook(WidgetTester tester, String title) async {
   return view;
 }
 
-/// Like [openBook], but stops the clock as soon as the page view is ready (timings).
-Future<PdfViewController> openBookFast(WidgetTester tester, String title) async {
-  await tester.tap(find.text(title).first);
+/// Finds [title] first, then times from the tap until its page view is ready (SC-001).
+Future<(PdfViewController, int)> openBookTimed(WidgetTester tester, String title) async {
+  ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first)).clearSnackBars();
+  await scrollToBook(tester, title);
+  final watch = Stopwatch()..start();
+  await tester.tap(find.descendant(of: find.byType(Scrollable), matching: find.text(title)).first);
   await pumpUntil(tester, find.byType(PdfDocumentView));
   final view = readerView(tester);
   await pumpUntilTrue(tester, () => view.isReady);
   await tester.pump();
-  return view;
+  return (view, watch.elapsedMilliseconds);
+}
+
+/// The system back action (the reader has no app bar for tester.pageBack()).
+Future<void> systemBack(WidgetTester tester) async {
+  await tester.binding.handlePopRoute();
+  await settleFor(tester, const Duration(milliseconds: 800));
 }
 
 /// Pumps until [condition] holds or [timeout] passes (real time).
