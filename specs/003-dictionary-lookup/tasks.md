@@ -381,12 +381,12 @@ the web store and the interaction lock.
 
 ### Tests for User Story 7 (write first, confirm they fail) ⚠️
 
-- [ ] T071 [P] [US7] Extend test/unit/reader/lookup_controller_test.dart: `lookUpWord` pushes onto the back stack; `back()` pops it; a new page lookup clears the stack; latest-wins also applies to related lookups
-- [ ] T072 [P] [US7] Widget-test in test/widget/lookup_related_test.dart: Copy puts the headword on the clipboard (mock `SystemChannels.platform`) and shows "Copied"; tapping a word in a definition opens its entry with Back; two steps and Back twice return to the first word (FR-023, FR-024)
+- [X] T071 [P] [US7] Extend test/unit/reader/lookup_controller_test.dart: `lookUpWord` pushes onto the back stack; `back()` pops it; a new page lookup clears the stack; latest-wins also applies to related lookups
+- [X] T072 [P] [US7] Widget-test in test/widget/lookup_related_test.dart: Copy puts the headword on the clipboard (mock `SystemChannels.platform`) and shows "Copied"; tapping a word in a definition opens its entry with Back; two steps and Back twice return to the first word (FR-023, FR-024)
 
 ### Implementation for User Story 7
 
-- [ ] T073 [US7] Add `lookUpWord` / `back` to lib/features/reader/lookup_controller.dart. In lib/features/reader/ui/lookup_panel.dart: make definition and example words tappable (word spans with recognisers, using the extractor's word rules), and add Back and Copy (`Clipboard.setData` + snackbar). Make T071 and T072 pass
+- [X] T073 [US7] Add `lookUpWord` / `back` to lib/features/reader/lookup_controller.dart. In lib/features/reader/ui/lookup_panel.dart: make definition and example words tappable (word spans with recognisers, using the extractor's word rules), and add Back and Copy (`Clipboard.setData` + snackbar). Make T071 and T072 pass
 
 **Checkpoint**: Related-word browsing and copy work.
 

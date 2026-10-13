@@ -125,6 +125,11 @@ class LookupController extends ChangeNotifier {
   /// The selection while it is being extended; looked up when the drag ends.
   WordSelection? _extended;
 
+  /// Entries left by tapping a word inside a definition; Back returns to them (FR-024).
+  final _backStack = <LookupState>[];
+
+  bool get canGoBack => _backStack.isNotEmpty;
+
   LookupState get state => _state;
 
   /// The dictionary's source and licence, once it has been opened (FR-034).
@@ -152,8 +157,29 @@ class LookupController extends ChangeNotifier {
     _text = text;
     _anchor = selection;
     _extended = null;
+    _backStack.clear();
     await _resolve(id, selection, _extractor.queryFor(text, selection));
     return true;
+  }
+
+  /// A word tapped inside a definition or example: looked up in the panel, with Back
+  /// to the entry shown now (FR-024). The page selection stays as it is.
+  Future<void> lookUpWord(String word) async {
+    final current = _state;
+    final query = _extractor.queryForWord(word);
+    if (query == null) return;
+    if ((current is LookupShown || current is LookupNotFound) &&
+        (_backStack.isEmpty || !identical(_backStack.last, current))) {
+      _backStack.add(current);
+    }
+    await _resolve(++_request, current.selection, query);
+  }
+
+  /// Back to the entry shown before the last related word.
+  void back() {
+    if (_backStack.isEmpty) return;
+    _request++;
+    _set(_backStack.removeLast());
   }
 
   /// A handle drag starts: the selection grows from its other end.
@@ -296,6 +322,7 @@ class LookupController extends ChangeNotifier {
     _request++;
     _extended = null;
     _anchor = null;
+    _backStack.clear();
     _set(const LookupIdle());
   }
 

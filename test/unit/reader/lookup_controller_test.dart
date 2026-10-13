@@ -292,4 +292,50 @@ void main() {
       expect(online.words, isEmpty);
     });
   });
+
+  group('related words and Back (US7)', () {
+    test('lookUpWord pushes onto the back stack; back() returns', () async {
+      await c.lookUpAt(at(1, text, 'melancholy'));
+      final first = c.state as LookupShown;
+      expect(c.canGoBack, isFalse);
+      await c.lookUpWord('reader');
+      expect((c.state as LookupShown).result.headword, 'reader');
+      expect(c.canGoBack, isTrue);
+      await c.lookUpWord('late,');
+      expect((c.state as LookupShown).result.headword, 'late');
+      c.back();
+      expect((c.state as LookupShown).result.headword, 'reader');
+      c.back();
+      expect(c.state, same(first));
+      expect(c.canGoBack, isFalse);
+      // The page selection stays on the word first pressed.
+      expect(c.selection!.text, 'melancholy');
+    });
+
+    test('a word without an entry is pushed too, as not found', () async {
+      await c.lookUpAt(at(1, text, 'melancholy'));
+      await c.lookUpWord('zorblax');
+      expect(c.state, isA<LookupNotFound>());
+      c.back();
+      expect((c.state as LookupShown).result.headword, 'melancholy');
+    });
+
+    test('a new lookup on the page clears the stack', () async {
+      await c.lookUpAt(at(1, text, 'melancholy'));
+      await c.lookUpWord('reader');
+      await c.lookUpAt(at(1, text, 'late'));
+      expect(c.canGoBack, isFalse);
+    });
+
+    test('latest wins for related lookups too', () async {
+      await c.lookUpAt(at(1, text, 'melancholy'));
+      lexicon.holds['reader'] = Completer<void>();
+      final slow = c.lookUpWord('reader');
+      await pumpEventQueue();
+      await c.lookUpWord('late');
+      lexicon.holds['reader']!.complete();
+      await slow;
+      expect((c.state as LookupShown).result.headword, 'late');
+    });
+  });
 }

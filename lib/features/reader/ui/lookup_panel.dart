@@ -1,6 +1,7 @@
 // The definition panel (003 contracts/lookup-ui.md "Panel", research R7): an overlay at
 // the bottom, or at the top when the word is low, at most a third of the view at first,
 // draggable to 85%. A swipe toward its edge closes it.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/dictionary/lexicon.dart';
@@ -25,6 +26,9 @@ class LookupPanel extends StatefulWidget {
     this.info,
     this.onAbout,
     this.onSearchOnline,
+    this.onBack,
+    this.onCopy,
+    this.onWord,
   });
 
   final LookupState state;
@@ -36,6 +40,13 @@ class LookupPanel extends StatefulWidget {
   final DictionaryInfo? info;
   final VoidCallback? onAbout;
   final VoidCallback? onSearchOnline;
+
+  /// Null when there is nothing to go back to.
+  final VoidCallback? onBack;
+  final ValueChanged<String>? onCopy;
+
+  /// A word tapped in a definition or example (FR-024).
+  final ValueChanged<String>? onWord;
 
   @override
   State<LookupPanel> createState() => _LookupPanelState();
@@ -106,6 +117,9 @@ class _LookupPanelState extends State<LookupPanel> {
           onClose: widget.onClose,
           onAbout: widget.onAbout,
           onSearchOnline: widget.onSearchOnline,
+          onBack: widget.onBack,
+          onCopy: widget.onCopy,
+          onWord: widget.onWord,
           // Drags on the header resize too, like the handle.
           onDrag: _drag,
           onDragEnd: _dragEnd,
@@ -172,6 +186,9 @@ class _Content extends StatelessWidget {
     this.info,
     this.onAbout,
     this.onSearchOnline,
+    this.onBack,
+    this.onCopy,
+    this.onWord,
   });
 
   final LookupState state;
@@ -182,6 +199,9 @@ class _Content extends StatelessWidget {
   final DictionaryInfo? info;
   final VoidCallback? onAbout;
   final VoidCallback? onSearchOnline;
+  final VoidCallback? onBack;
+  final ValueChanged<String>? onCopy;
+  final ValueChanged<String>? onWord;
 
   @override
   Widget build(BuildContext context) {
@@ -197,10 +217,12 @@ class _Content extends StatelessWidget {
       onVerticalDragUpdate: onDrag,
       onVerticalDragEnd: onDragEnd,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 4, 0),
+        padding: EdgeInsets.fromLTRB(onBack == null ? 20 : 4, 0, 4, 0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (onBack != null)
+              IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Back', onPressed: onBack),
             Expanded(
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.end,
@@ -224,6 +246,12 @@ class _Content extends StatelessWidget {
                 ],
               ),
             ),
+            if (onCopy != null && word.isNotEmpty && state is! LookupPreparing)
+              IconButton(
+                icon: const Icon(Icons.copy),
+                tooltip: 'Copy',
+                onPressed: () => onCopy!(word),
+              ),
             IconButton(icon: const Icon(Icons.close), tooltip: 'Close', onPressed: onClose),
           ],
         ),
@@ -332,6 +360,7 @@ class _Content extends StatelessWidget {
             sense: e.senses[i],
             foreground: foreground,
             muted: muted,
+            onWord: onWord,
           ),
         );
       }
@@ -378,13 +407,14 @@ class _Waiting extends StatelessWidget {
   );
 }
 
-class _SenseView extends StatelessWidget {
+class _SenseView extends StatefulWidget {
   const _SenseView({
     required this.number,
     required this.pos,
     required this.sense,
     required this.foreground,
     required this.muted,
+    this.onWord,
   });
 
   final int number;
@@ -392,48 +422,98 @@ class _SenseView extends StatelessWidget {
   final Sense sense;
   final Color foreground;
   final Color muted;
+  final ValueChanged<String>? onWord;
+
+  @override
+  State<_SenseView> createState() => _SenseViewState();
+}
+
+final _wordPattern = RegExp(r"[\p{L}\p{M}][\p{L}\p{M}'’-]*", unicode: true);
+
+class _SenseViewState extends State<_SenseView> {
+  final _recognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    _disposeRecognizers();
+    super.dispose();
+  }
+
+  void _disposeRecognizers() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+  }
+
+  /// [text] with every word tappable (FR-024).
+  List<InlineSpan> _words(String text) {
+    final onWord = widget.onWord;
+    if (onWord == null) return [TextSpan(text: text)];
+    final spans = <InlineSpan>[];
+    var last = 0;
+    for (final m in _wordPattern.allMatches(text)) {
+      if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start)));
+      final word = m[0]!;
+      final recognizer = TapGestureRecognizer()..onTap = () => onWord(word);
+      _recognizers.add(recognizer);
+      spans.add(TextSpan(text: word, recognizer: recognizer));
+      last = m.end;
+    }
+    if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
+    _disposeRecognizers();
     final text = Theme.of(context).textTheme;
+    final sense = widget.sense;
     final tags = sense.tags.isEmpty ? '' : '${sense.tags.join(', ')} ';
+    // One screen-reader node per sense (FR-033); the words stay tappable by touch.
     return Semantics(
       container: true,
-      label: '$pos, definition $number: ${sense.tags.isEmpty ? '' : '$tags, '}${sense.gloss}',
-      excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: '$number. '),
-                  if (tags.isNotEmpty)
-                    TextSpan(
-                      text: tags,
-                      style: TextStyle(
-                        color: muted,
-                        fontSize: (text.bodySmall?.fontSize ?? 12),
-                        letterSpacing: 0.6,
-                        fontFeatures: const [FontFeature.enable('smcp')],
+      label:
+          '${widget.pos}, definition ${widget.number}: '
+          '${sense.tags.isEmpty ? '' : '$tags, '}${sense.gloss}',
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: '${widget.number}. '),
+                    if (tags.isNotEmpty)
+                      TextSpan(
+                        text: tags,
+                        style: TextStyle(
+                          color: widget.muted,
+                          fontSize: (text.bodySmall?.fontSize ?? 12),
+                          letterSpacing: 0.6,
+                          fontFeatures: const [FontFeature.enable('smcp')],
+                        ),
                       ),
-                    ),
-                  TextSpan(text: sense.gloss),
-                ],
-              ),
-              style: text.bodyLarge?.copyWith(color: foreground),
-            ),
-            for (final x in sense.examples)
-              Padding(
-                padding: const EdgeInsets.only(left: 18, top: 2),
-                child: Text(
-                  x,
-                  style: text.bodyMedium?.copyWith(color: muted, fontStyle: FontStyle.italic),
+                    ..._words(sense.gloss),
+                  ],
                 ),
+                style: text.bodyLarge?.copyWith(color: widget.foreground),
               ),
-          ],
+              for (final x in sense.examples)
+                Padding(
+                  padding: const EdgeInsets.only(left: 18, top: 2),
+                  child: Text.rich(
+                    TextSpan(children: _words(x)),
+                    style: text.bodyMedium?.copyWith(
+                      color: widget.muted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

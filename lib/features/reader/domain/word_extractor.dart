@@ -227,6 +227,16 @@ class WordExtractor {
     );
   }
 
+  /// The query for a word given as text (a word tapped in a definition), or null if it
+  /// isn't a word.
+  LookupQuery? queryForWord(String word) {
+    final text = PageText(word, List.filled(word.length, Rect.zero));
+    final i = word.runes.isEmpty ? -1 : word.indexOf(RegExp(r'\p{L}', unicode: true));
+    if (i < 0) return null;
+    final selection = wordAt(text, i);
+    return selection == null ? null : queryFor(text, selection);
+  }
+
   WordSelection _selection(PageText text, int page, int start, int end) => WordSelection(
     page: page,
     start: start,

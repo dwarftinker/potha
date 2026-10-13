@@ -435,6 +435,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         : panelPlacement(view: screen, word: word);
   }
 
+  /// Copies the word or phrase (FR-023).
+  Future<void> _copy(String word) async {
+    await Clipboard.setData(ClipboardData(text: word));
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Copied'), duration: Duration(seconds: 2)));
+  }
+
   Future<void> _openDictionaryAbout() async {
     final info = _lookup?.info;
     if (info == null) return;
@@ -886,6 +895,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             onClose: _lookup!.close,
             onAbout: _openDictionaryAbout,
             onSearchOnline: _lookup!.searchOnline,
+            onBack: _lookup!.canGoBack ? _lookup!.back : null,
+            onCopy: _copy,
+            onWord: _lookup!.lookUpWord,
           ),
         ),
       ),
