@@ -123,8 +123,9 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   `systemBack` (the reader has no app bar). The S24's 30 s screen timeout can lock the
   phone mid-run; raise it while testing
   (`adb shell settings put system screen_off_timeout 1800000`) and restore it (30000).
-- Pinned on purpose: `wakelock_plus` 1.8.0 (revisit after 2026-10-13) and
-  `package_info_plus` 10.2.1 (revisit after 2026-10-15), both under two weeks old.
+- Pinned on purpose: `package_info_plus` 10.2.1 (10.2.2 is under two weeks old; revisit
+  after 2026-10-15) and `wakelock_plus` 1.8.0 (1.8.1 needs `dbus` ^0.8, which
+  `desktop_drop` 0.8.x does not allow yet).
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
   while declaring ^4.0.9). Revisit after 2026-10-25.
 

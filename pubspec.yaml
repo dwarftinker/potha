@@ -49,11 +49,12 @@ dependencies:
   # Transitive (via pdfrx), pinned: 4.11.0 calls an archive 4.4 API while declaring
   # archive ^4.0.9, and archive 4.4+ is under two weeks old. Revisit after 2026-10-25.
   image: 4.10.1
-  # 1.8.1 (2026-09-29) is under two weeks old; revisit after 2026-10-13.
+  # 1.8.1 needs dbus ^0.8, but desktop_drop (all releases up to 0.8.4) needs dbus ^0.7.
+  # Revisit when desktop_drop allows dbus 0.8.
   wakelock_plus: 1.8.0
   # Already resolved through pdfrx; used directly for web links (002 FR-025).
   url_launcher: ^6.3.2
-  # Transitive (via wakelock_plus), pinned: 10.2.2 is under two weeks old.
+  # Transitive (via wakelock_plus), pinned: 10.2.2 (2026-10-01) is under two weeks old.
   # Revisit after 2026-10-15.
   package_info_plus: 10.2.1
 dev_dependencies:
