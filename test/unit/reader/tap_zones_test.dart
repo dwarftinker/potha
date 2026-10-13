@@ -46,4 +46,32 @@ void main() {
     const link = PageLink(Rect.fromLTRB(0, 0, 1, 1), 2);
     expect(at(200, links: const [link]), const ToggleControls());
   });
+
+  group('tap-to-define on (003 FR-016)', () {
+    const point = PagePoint(2, Offset(0.5, 0.5));
+    TapAction on(double x, {PagePoint? p = point, List<DocumentLink> links = const []}) =>
+        classifyTap(x: x, viewWidth: width, pagePoint: p, linksOnPage: links, tapToDefine: true);
+
+    test('the middle looks up the word under the tap', () {
+      expect(on(200), const LookUpWord(point));
+    });
+
+    test('the edges still turn pages, even on a word', () {
+      expect(on(10), const PreviousPage());
+      expect(on(390), const NextPage());
+    });
+
+    test('a link still wins', () {
+      const link = PageLink(Rect.fromLTRB(0.4, 0.4, 0.6, 0.6), 9);
+      expect(on(200, links: [link]), const FollowLink(link));
+    });
+
+    test('between pages it toggles the controls', () {
+      expect(on(200, p: null), const ToggleControls());
+    });
+
+    test('with it off, a word in the middle toggles the controls', () {
+      expect(at(200, point: point), const ToggleControls());
+    });
+  });
 }

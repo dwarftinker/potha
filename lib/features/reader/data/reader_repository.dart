@@ -66,6 +66,17 @@ class ReaderRepository {
   Future<void> setFit(PageFit fit) => (_db.update(
     _db.readerPreferences,
   )..where((p) => p.id.equals(1))).write(ReaderPreferencesCompanion(fit: Value(fit)));
+
+  /// 003 FR-015.
+  Future<void> setTapToDefine(bool on) => (_db.update(
+    _db.readerPreferences,
+  )..where((p) => p.id.equals(1))).write(ReaderPreferencesCompanion(tapToDefine: Value(on)));
+
+  /// The one-time lookup hint has been seen (003 FR-006).
+  Future<void> markLookupHintShown() =>
+      (_db.update(_db.readerPreferences)..where((p) => p.id.equals(1))).write(
+        const ReaderPreferencesCompanion(lookupHintShown: Value(true)),
+      );
 }
 
 final readerRepositoryProvider = Provider<ReaderRepository>(

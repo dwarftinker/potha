@@ -212,6 +212,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             icon: const Icon(Icons.add),
             onPressed: _pickAndImport,
           ),
+          PopupMenuButton<void>(
+            tooltip: 'More',
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                // Licences, including the dictionary's (003 FR-034).
+                onTap: () => showLicensePage(context: context, applicationName: 'Potha'),
+                child: const Text('About Potha'),
+              ),
+            ],
+          ),
         ],
       ),
       floatingActionButton: (books.value?.isNotEmpty ?? false)

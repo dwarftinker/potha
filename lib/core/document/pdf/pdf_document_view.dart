@@ -86,10 +86,24 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
   @override
   void initState() {
     super.initState();
+    _c.interactionLock.addListener(_lockChanged);
     _c
       ..mode = widget.config.mode
       ..currentPage = widget.config.initialPosition.page
       ..onPositionChanged = widget.config.onPositionChanged;
+  }
+
+  @override
+  void dispose() {
+    _c.interactionLock.removeListener(_lockChanged);
+    super.dispose();
+  }
+
+  /// A long-press or handle drag locks pans and zooms (003 research R6). The viewer's
+  /// InteractiveViewer reads panEnabled and scaleEnabled on every update, so this takes
+  /// effect mid-gesture.
+  void _lockChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -144,13 +158,18 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
     return zoomRange(pageAtNormal: page * s, view: view);
   }
 
-  /// Search matches (FR-032), painted in colours chosen to look right after the theme
-  /// filter (research R5).
+  /// Search matches (FR-032) and the lookup selection (003 FR-002), painted in colours
+  /// chosen to look right after the theme filter (research R5).
   void _paintHighlights(Canvas canvas, Rect pageRect, PdfPage page) {
     final config = widget.config;
     for (final h in config.highlights) {
       if (h.page != page.pageNumber) continue;
-      final paint = Paint()..color = h.active ? config.activeHighlightColor : config.highlightColor;
+      final paint = Paint()
+        ..color = switch (h.kind) {
+          HighlightKind.match => config.highlightColor,
+          HighlightKind.activeMatch => config.activeHighlightColor,
+          HighlightKind.selection => config.selectionColor,
+        };
       for (final r in h.rects) {
         canvas.drawRect(
           Rect.fromLTRB(
@@ -190,6 +209,7 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           if (keep != null) _restore(keep);
         }
         final range = _zoomRange(size);
+        final locked = _c.interactionLock.value;
         _c
           ..minZoom = range.min
           ..maxZoom = range.max;
@@ -199,7 +219,8 @@ class _PdfDocumentViewState extends State<PdfDocumentView> {
           params: PdfViewerParams(
             layoutPages: _layoutPages,
             // Paged mode moves the view itself (PagedDragHandler); pinch stays with pdfrx.
-            panEnabled: !_paged,
+            panEnabled: !_paged && !locked,
+            scaleEnabled: !locked,
             normalizeMatrix: _paged ? _normalize : null,
             margin: 0,
             // The theme filter would recolour the background too; it is painted below.

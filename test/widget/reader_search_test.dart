@@ -1,6 +1,7 @@
 // User Story 7: search in the book (FR-030 to FR-034).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:potha/core/document/document_format.dart';
 
 import 'reader_test_app.dart';
 import 'test_app.dart';
@@ -49,7 +50,7 @@ void main() {
     expect(find.text('Back to page 1'), findsOneWidget);
     expect(find.text('Match 2 of 3'), findsOneWidget);
     final highlights = c.config!.highlights;
-    expect(highlights.where((h) => h.active).single.page, 7);
+    expect(highlights.where((h) => h.kind == HighlightKind.activeMatch).single.page, 7);
     expect(highlights.map((h) => h.page).toSet(), {3, 7});
 
     await tester.tap(find.byTooltip('Next match'));

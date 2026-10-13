@@ -82,4 +82,20 @@ void main() {
     expect(seen.first, (ReadingTheme.light, PageFit.fitWidth));
     expect(seen.last, (ReadingTheme.dark, PageFit.fitPage));
   });
+
+  test('tap-to-define and the lookup hint start off, and can be set (003 FR-006, FR-015)',
+      () async {
+    final seen = <(bool, bool)>[];
+    final sub = repo.watchPreferences().listen((p) => seen.add((p.tapToDefine, p.lookupHintShown)));
+    await pumpEventQueue();
+    await repo.setTapToDefine(true);
+    await pumpEventQueue();
+    await repo.markLookupHintShown();
+    await pumpEventQueue();
+    await sub.cancel();
+    expect(seen.first, (false, false));
+    expect(seen.last, (true, true));
+    await repo.setTapToDefine(false);
+    expect((await repo.watchPreferences().first).tapToDefine, isFalse);
+  });
 }

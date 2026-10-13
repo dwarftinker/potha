@@ -13,7 +13,15 @@ import 'package:potha/core/storage/book_file_store_io.dart';
 import 'package:potha/features/library/data/library_repository.dart';
 import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
+import 'package:potha/core/dictionary/dictionary_database.dart';
+import 'package:potha/core/dictionary/dictionary_store_io.dart';
+import 'package:potha/core/dictionary/online_dictionary.dart';
+import 'package:potha/core/platform/network_status.dart';
+import 'package:potha/features/reader/data/history_repository.dart';
+import 'package:potha/features/reader/data/page_text_cache.dart';
+import 'package:potha/features/reader/data/reader_repository.dart';
 import 'package:potha/features/reader/data/thumbnail_cache.dart';
+import 'package:potha/features/reader/lookup_controller.dart';
 import 'package:potha/features/reader/domain/text_search.dart';
 
 final _pdfium = File('build/test_pdfium/libpdfium.so');
@@ -25,6 +33,13 @@ class _NoNetwork extends HttpOverrides {
     attempts.add('HttpClient');
     throw StateError('Network access is not allowed');
   }
+}
+
+class _Online implements NetworkStatus {
+  @override
+  bool get isOnline => true;
+  @override
+  Stream<bool> get changes => const Stream.empty();
 }
 
 class _Passwords implements PasswordStore {
@@ -95,6 +110,82 @@ void main() {
           (await thumbs.load(3))!.dispose();
           thumbs.dispose();
           await doc.close();
+        }, overrides));
+    expect(overrides.attempts, isEmpty);
+  }, skip: !_pdfium.existsSync());
+
+  // 003 FR-032: lookups, the dictionary store, history and tap-to-define stay on the device. The
+  // only request is the reader's "Search online" (test/unit/dictionary).
+  testWidgets('dictionary lookups with no network', (tester) async {
+    final overrides = _NoNetwork();
+    await tester.runAsync(() => HttpOverrides.runWithHttpOverrides(() async {
+          final root = await Directory.systemTemp.createTemp('potha_dict_offline');
+          final dictionary = IoDictionaryStore(
+            supportDirectory: () async => root,
+            loadAsset: () async =>
+                File('test/fixtures/dictionary/dict_sample.sqlite.gz').readAsBytes(),
+            loadVersion: () async => 'sample',
+            openExecutor: (file) => NativeDatabase(file,
+                setup: (db) => db.execute(DictionaryDatabase.readOnlyPragma)),
+          );
+          final file = File('test/fixtures/lookup_prose.pdf');
+          final doc = await const PdfDocumentFormat().open(BookFileRef(
+              path: file.absolute.path, readAll: file.readAsBytes, sizeBytes: file.lengthSync()));
+          // A real Wikimedia client and a device that says it is online: still nothing
+          // is sent, because the reader never chose "Search online".
+          final online = WikimediaDictionary();
+          final db = AppDatabase(NativeDatabase.memory());
+          await db.into(db.books).insert(BooksCompanion.insert(
+              id: 'b',
+              format: 'pdf',
+              title: 'Prose',
+              sortTitle: 'prose',
+              searchKey: 'prose',
+              originalFileName: 'prose.pdf',
+              contentHash: 'h',
+              sizeBytes: 1,
+              pageCount: 3,
+              isPasswordProtected: false,
+              addedAt: DateTime.utc(2026)));
+          final history = HistoryRepository(db);
+          final recorded = <Future<void>>[];
+          final lookup = LookupController(
+              store: dictionary,
+              pageText: PageTextCache(doc.loadPageText),
+              network: _Online(),
+              online: online,
+              onRecord: (r) => recorded.add(history.record(
+                  bookId: 'b',
+                  wordKey: r.wordKey,
+                  word: r.word,
+                  headword: r.headword,
+                  source: r.source,
+                  page: r.page)));
+          final text = (await doc.loadPageText(1))!;
+          PagePoint on(String word) =>
+              PagePoint(1, text.charRects[text.text.indexOf(word) + 1].center);
+
+          dictionary.ensureStarted();
+          await lookup.lookUpAt(on('melancholy'));
+          expect(lookup.state, isA<LookupShown>());
+          await lookup.lookUpAt(on('mice'));
+          expect((lookup.state as LookupShown).result.sections.map((s) => s.note),
+              contains('mice – plural of mouse'));
+          await lookup.lookUpAt(on('Call'));
+          expect((lookup.state as LookupNotFound).online, OnlineSearch.available);
+
+          await Future.wait(recorded);
+          expect(await history.watchBook('b').first, hasLength(3));
+          final repo = ReaderRepository(db);
+          await repo.setTapToDefine(true);
+          await repo.setTapToDefine(false);
+
+          lookup.dispose();
+          online.close();
+          await dictionary.close();
+          await doc.close();
+          await db.close();
+          await root.delete(recursive: true);
         }, overrides));
     expect(overrides.attempts, isEmpty);
   }, skip: !_pdfium.existsSync());

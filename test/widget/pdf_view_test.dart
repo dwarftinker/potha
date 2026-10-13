@@ -189,6 +189,67 @@ void main() {
     expect(point.offset.dy, closeTo(0.75, 0.01));
     await close(tester);
   }, skip: _skip);
+
+  // 003: placing handles and the panel needs page rects on screen (contracts/lookup.md).
+  void expectRoundTrip(int page) {
+    const n = Rect.fromLTRB(0.25, 0.25, 0.5, 0.3);
+    final global = controller.pageRectToGlobal(page, n)!;
+    final tl = controller.pagePointAt(global.topLeft + const Offset(0.5, 0.5))!;
+    final br = controller.pagePointAt(global.bottomRight - const Offset(0.5, 0.5))!;
+    expect((tl.page, br.page), (page, page));
+    expect(tl.offset.dx, closeTo(0.25, 0.01));
+    expect(tl.offset.dy, closeTo(0.25, 0.01));
+    expect(br.offset.dx, closeTo(0.5, 0.01));
+    expect(br.offset.dy, closeTo(0.3, 0.01));
+  }
+
+  testWidgets('pageRectToGlobal maps page rects to the screen in both modes and zoomed (003)',
+      (tester) async {
+    await show(tester, 'three_pages.pdf');
+    expectRoundTrip(1);
+    expect(controller.pageRectToGlobal(9, const Rect.fromLTRB(0, 0, 1, 1)), isNull);
+    unawaited(controller.setZoom(2));
+    await settle(tester);
+    expectRoundTrip(1);
+    await close(tester);
+
+    await show(tester, 'three_pages.pdf',
+        mode: PageMode.continuous, start: const ReadingPosition(2, 0));
+    expectRoundTrip(2);
+    unawaited(controller.setZoom(3));
+    await settle(tester);
+    expectRoundTrip(2);
+    await close(tester);
+  }, skip: _skip);
+
+  testWidgets('the interaction lock blocks drags in both modes (003 research R6)', (tester) async {
+    await show(tester, 'outline_links.pdf');
+    controller.setInteractionLocked(true);
+    await tester.pump();
+    await tester.dragFrom(const Offset(300, 400), const Offset(-150, 0));
+    await settle(tester);
+    expect(controller.position.page, 1);
+    controller.setInteractionLocked(false);
+    await tester.pump();
+    await tester.dragFrom(const Offset(300, 400), const Offset(-150, 0));
+    await settle(tester);
+    expect(controller.position.page, 2);
+    await close(tester);
+
+    await show(tester, 'outline_links.pdf', mode: PageMode.continuous);
+    final top = controller.visibleRect.top;
+    controller.setInteractionLocked(true);
+    await tester.pump();
+    await tester.dragFrom(const Offset(200, 600), const Offset(0, -300));
+    await settle(tester);
+    expect(controller.visibleRect.top, closeTo(top, 0.5));
+    controller.setInteractionLocked(false);
+    await tester.pump();
+    await tester.dragFrom(const Offset(200, 600), const Offset(0, -300));
+    await settle(tester);
+    expect(controller.visibleRect.top, greaterThan(top + 100));
+    await close(tester);
+  }, skip: _skip);
 }
 
 class _Host extends StatelessWidget {

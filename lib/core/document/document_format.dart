@@ -144,16 +144,26 @@ class PagePoint {
   String toString() => 'PagePoint($page, $offset)';
 }
 
-/// Areas to highlight on a page (search matches), normalised to the page.
+/// What a highlight marks; each kind has its own colour in [ReaderViewConfig].
+enum HighlightKind {
+  /// A search match.
+  match,
+
+  /// The current search match, drawn more strongly.
+  activeMatch,
+
+  /// The word or phrase selected for lookup (003 FR-002).
+  selection,
+}
+
+/// Areas to highlight on a page, normalised to the page.
 @immutable
 class PageHighlight {
-  const PageHighlight(this.page, this.rects, {this.active = false});
+  const PageHighlight(this.page, this.rects, {this.kind = HighlightKind.match});
 
   final int page;
   final List<Rect> rects;
-
-  /// The current match, drawn more strongly.
-  final bool active;
+  final HighlightKind kind;
 }
 
 /// One page at a time, or all pages in one vertical scroll.
@@ -234,6 +244,7 @@ class ReaderViewConfig {
     this.highlights = const [],
     this.highlightColor = const Color(0x66FFD54F),
     this.activeHighlightColor = const Color(0x99FF9800),
+    this.selectionColor = const Color(0x664A90E2),
   });
 
   final PageMode mode;
@@ -249,6 +260,7 @@ class ReaderViewConfig {
   /// Colours as painted, before [pageFilter] is applied.
   final Color highlightColor;
   final Color activeHighlightColor;
+  final Color selectionColor;
 
   ReaderViewConfig copyWith({
     PageMode? mode,
@@ -259,6 +271,7 @@ class ReaderViewConfig {
     List<PageHighlight>? highlights,
     Color? highlightColor,
     Color? activeHighlightColor,
+    Color? selectionColor,
   }) => ReaderViewConfig(
     mode: mode ?? this.mode,
     fit: fit ?? this.fit,
@@ -269,6 +282,7 @@ class ReaderViewConfig {
     highlights: highlights ?? this.highlights,
     highlightColor: highlightColor ?? this.highlightColor,
     activeHighlightColor: activeHighlightColor ?? this.activeHighlightColor,
+    selectionColor: selectionColor ?? this.selectionColor,
   );
 }
 
@@ -298,6 +312,14 @@ abstract interface class DocumentViewController implements Listenable {
 
   /// The page point under [globalPosition], or null between pages.
   PagePoint? pagePointAt(Offset globalPosition);
+
+  /// Where [normalised] (a rect on [page], 0–1) is on screen, in global coordinates, or
+  /// null if that page isn't laid out. Places selection handles and the lookup panel.
+  Rect? pageRectToGlobal(int page, Rect normalised);
+
+  /// While true, the view ignores pans, flings and zooms (from a long-press until the
+  /// pointer is lifted, and while a selection handle is dragged: 003 research R6).
+  void setInteractionLocked(bool locked);
 
   void dispose();
 }

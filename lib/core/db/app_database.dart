@@ -44,8 +44,7 @@ class Books extends Table {
 
 /// Cover images, kept apart so list queries don't load image bytes.
 class BookCovers extends Table {
-  TextColumn get bookId =>
-      text().references(Books, #id, onDelete: KeyAction.cascade)();
+  TextColumn get bookId => text().references(Books, #id, onDelete: KeyAction.cascade)();
 
   /// PNG, 360 px wide, page 1.
   BlobColumn get image => blob()();
@@ -56,8 +55,7 @@ class BookCovers extends Table {
 
 /// Where the reader last stopped in a book. No row means "New".
 class ReadingProgress extends Table {
-  TextColumn get bookId =>
-      text().references(Books, #id, onDelete: KeyAction.cascade)();
+  TextColumn get bookId => text().references(Books, #id, onDelete: KeyAction.cascade)();
 
   /// 1-based; 1 ≤ currentPage ≤ pageCount (enforced by the repository).
   IntColumn get currentPage =>
@@ -85,12 +83,9 @@ enum ViewMode { grid, list }
 /// A single row (id = 1) with the reader's library choices.
 class LibraryPreferences extends Table {
   IntColumn get id => integer()();
-  TextColumn get sortOrder => textEnum<SortOrder>()
-      .withDefault(const Constant('recentlyOpened'))();
-  TextColumn get viewMode =>
-      textEnum<ViewMode>().withDefault(const Constant('grid'))();
-  BoolColumn get webStorageNoticeShown =>
-      boolean().withDefault(const Constant(false))();
+  TextColumn get sortOrder => textEnum<SortOrder>().withDefault(const Constant('recentlyOpened'))();
+  TextColumn get viewMode => textEnum<ViewMode>().withDefault(const Constant('grid'))();
+  BoolColumn get webStorageNoticeShown => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -101,42 +96,92 @@ enum ReadingTheme { light, dark, sepia }
 /// A single row (id = 1) with the reader's choices for all books (002).
 class ReaderPreferences extends Table {
   IntColumn get id => integer()();
-  TextColumn get theme =>
-      textEnum<ReadingTheme>().withDefault(const Constant('light'))();
+  TextColumn get theme => textEnum<ReadingTheme>().withDefault(const Constant('light'))();
   TextColumn get fit => textEnum<PageFit>().withDefault(const Constant('fitWidth'))();
+
+  /// 003 FR-015: a single tap on a word looks it up. Off by default (clarification Q2).
+  BoolColumn get tapToDefine => boolean().withDefault(const Constant(false))();
+
+  /// 003 FR-006: set when the one-time lookup hint is dismissed or a lookup is made.
+  BoolColumn get lookupHintShown => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+/// Where the entry shown for a lookup came from; `none` when nothing was found.
+enum LookupSource { offline, online, none }
+
+/// One line per word per book (003 data-model.md, clarification Q5).
+@TableIndex(name: 'lookup_history_looked_up_at', columns: {#lookedUpAt})
+class LookupHistory extends Table {
+  TextColumn get bookId => text().references(Books, #id, onDelete: KeyAction.cascade)();
+
+  /// The normalised lookup key (research R5).
+  TextColumn get wordKey => text()();
+
+  /// As the reader saw it, from the latest lookup ("Running").
+  TextColumn get word => text()();
+
+  /// The first entry shown ("run"); null if not found.
+  TextColumn get headword => text().nullable()();
+  TextColumn get source => textEnum<LookupSource>()();
+
+  // ignore: recursive_getters
+  IntColumn get page => integer().check(page.isBiggerOrEqualValue(1))();
+
+  /// UTC; history is ordered by this, newest first.
+  DateTimeColumn get lookedUpAt => dateTime()();
+
+  IntColumn get count =>
+      // ignore: recursive_getters
+      integer().withDefault(const Constant(1)).check(count.isBiggerOrEqualValue(1))();
+
+  @override
+  Set<Column> get primaryKey => {bookId, wordKey};
+}
+
 @DriftDatabase(
-    tables: [Books, BookCovers, ReadingProgress, LibraryPreferences, ReaderPreferences])
+  tables: [
+    Books,
+    BookCovers,
+    ReadingProgress,
+    LibraryPreferences,
+    ReaderPreferences,
+    LookupHistory,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await into(libraryPreferences)
-              .insert(LibraryPreferencesCompanion.insert(id: const Value(1)));
-          await into(readerPreferences)
-              .insert(ReaderPreferencesCompanion.insert(id: const Value(1)));
-        },
-        onUpgrade: stepByStep(
-          from1To2: (m, schema) async {
-            // 002 reader: position within the page, page mode, reader preferences.
-            await m.addColumn(schema.readingProgress, schema.readingProgress.pageOffset);
-            await m.addColumn(schema.readingProgress, schema.readingProgress.pageMode);
-            await m.createTable(schema.readerPreferences);
-            await customStatement('INSERT INTO reader_preferences (id) VALUES (1)');
-          },
-        ),
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await into(libraryPreferences).insert(LibraryPreferencesCompanion.insert(id: const Value(1)));
+      await into(readerPreferences).insert(ReaderPreferencesCompanion.insert(id: const Value(1)));
+    },
+    onUpgrade: stepByStep(
+      from1To2: (m, schema) async {
+        // 002 reader: position within the page, page mode, reader preferences.
+        await m.addColumn(schema.readingProgress, schema.readingProgress.pageOffset);
+        await m.addColumn(schema.readingProgress, schema.readingProgress.pageMode);
+        await m.createTable(schema.readerPreferences);
+        await customStatement('INSERT INTO reader_preferences (id) VALUES (1)');
+      },
+      from2To3: (m, schema) async {
+        // 003 lookup: history, tap-to-define and the one-time hint.
+        await m.createTable(schema.lookupHistory);
+        await m.createIndex(schema.lookupHistoryLookedUpAt);
+        await m.addColumn(schema.readerPreferences, schema.readerPreferences.tapToDefine);
+        await m.addColumn(schema.readerPreferences, schema.readerPreferences.lookupHintShown);
+      },
+    ),
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 }

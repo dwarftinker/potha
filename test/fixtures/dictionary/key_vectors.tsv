@@ -1,0 +1,16 @@
+# input<TAB>key. Escapes: \t = tab, \s = space at either end, \uXXXX = code point.
+Hello	hello
+HELLO	hello
+cafe\u0301	café
+Café	café
+don\u2019t	don't
+don't	don't
+reader\u2018s	reader's
+give   up	give up
+give\tup	give up
+in spite  of	in spite of
+well-known	well-known
+\s melancholy \s	melancholy
+Turkey	turkey
+na\u0131ve	na\u0131ve
+Été	été

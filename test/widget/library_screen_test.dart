@@ -63,4 +63,17 @@ void main() {
 
     await app.dispose(tester);
   });
+
+  testWidgets('the menu opens About Potha with the licences (003 FR-034)', (tester) async {
+    final app = TestApp();
+    await app.pump(tester);
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About Potha'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LicensePage), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await app.dispose(tester);
+  });
 }

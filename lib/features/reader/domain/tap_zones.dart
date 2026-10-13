@@ -43,17 +43,32 @@ class FollowLink extends TapAction {
   String toString() => 'FollowLink($link)';
 }
 
+/// Tap-to-define (003 FR-016): look up the word at [point]; if there is none, the
+/// reader toggles the controls instead.
+class LookUpWord extends TapAction {
+  const LookUpWord(this.point);
+  final PagePoint point;
+  @override
+  bool operator ==(Object other) => other is LookUpWord && other.point == point;
+  @override
+  int get hashCode => point.hashCode;
+  @override
+  String toString() => 'LookUpWord($point)';
+}
+
 /// The share of the view width, on each side, that turns pages (FR-007).
 const edgeZone = 0.2;
 
 /// Classifies a tap at [x] in a view [viewWidth] wide. [pagePoint] is the page point
 /// under the tap (null between pages) and [linksOnPage] the links on that page. A link
-/// wins, then the edges, then the middle.
+/// wins, then the edges, then the middle: a word when [tapToDefine] is on (003), else
+/// the controls.
 TapAction classifyTap({
   required double x,
   required double viewWidth,
   PagePoint? pagePoint,
   List<DocumentLink> linksOnPage = const [],
+  bool tapToDefine = false,
 }) {
   if (pagePoint != null) {
     for (final link in linksOnPage) {
@@ -62,5 +77,6 @@ TapAction classifyTap({
   }
   if (x < viewWidth * edgeZone) return const PreviousPage();
   if (x > viewWidth * (1 - edgeZone)) return const NextPage();
+  if (tapToDefine && pagePoint != null) return LookUpWord(pagePoint);
   return const ToggleControls();
 }
