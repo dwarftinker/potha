@@ -1,12 +1,14 @@
 // The reading screen (feature 002). Replaces 001's basic page view.
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
+import '../../../core/dictionary/dictionary_store.dart';
 import '../../../core/document/document_format.dart';
 import '../../../core/document/pdf/pdf_document_format.dart';
 import '../../../core/document/pdf/pdf_document_view.dart';
@@ -16,17 +18,23 @@ import '../../../core/secure/password_store.dart';
 import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
 import '../../library/ui/password_dialog.dart';
+import '../data/page_text_cache.dart';
 import '../data/reader_repository.dart';
 import '../data/thumbnail_cache.dart';
 import '../domain/auto_hide.dart';
 import '../domain/jump_back.dart';
+import '../domain/panel_placement.dart';
 import '../domain/reader_theme.dart';
 import '../domain/text_search.dart';
 import '../domain/tap_zones.dart';
+import '../lookup_controller.dart';
 import '../progress_saver.dart';
 import 'contents_sheet.dart';
+import 'dictionary_about.dart';
 import 'go_to_page_dialog.dart';
 import 'jump_back_chip.dart';
+import 'lookup_hint.dart';
+import 'lookup_panel.dart';
 import 'reader_bars.dart';
 import 'reader_shortcuts.dart';
 import 'search_panel.dart';
@@ -80,6 +88,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Future<List<OutlineEntry>>? _outline;
   SearchSession? _search;
   ThumbnailCache? _thumbnails;
+
+  /// Dictionary lookup (003): page text for hit tests, and the panel's state.
+  PageTextCache? _pageText;
+  LookupController? _lookup;
+  WordSelection? _placedFor;
+  PanelPlacement? _placement;
+
+  /// Bars just shown by a mouse click let pointers through for a moment, so the second
+  /// click of a double-click on a word under them still reaches the page (FR-001).
+  bool _barsSettling = false;
+  Timer? _barsSettle;
+  PointerDeviceKind? _lastPointerKind;
   late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
@@ -196,6 +216,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _loadLinksNear(start.page);
       _search = SearchSession(TextSearch(doc), currentPage: () => _position.page)
         ..addListener(_rebuild);
+      final store = ref.read(dictionaryStoreProvider);
+      _pageText = PageTextCache(doc.loadPageText);
+      _lookup = LookupController(store: store, pageText: _pageText!)..addListener(_lookupChanged);
+      // The web downloads the dictionary on the first book open (FR-022); on mobile the
+      // unpack has usually finished by now.
+      store.ensureStarted();
     } on DocumentOpenException catch (e) {
       _fail(
         e.kind == DocumentOpenFailure.passwordCancelled
@@ -214,10 +240,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _barsSettle?.cancel();
     _keepAwake.disable();
     _jumpBack.dispose();
     _search?.dispose();
     _thumbnails?.dispose();
+    _lookup
+      ?..removeListener(_lookupChanged)
+      ..dispose();
     _controls
       ..removeListener(_controlsChanged)
       ..dispose();
@@ -233,6 +263,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final pageChanged = position.page != _position.page;
     _position = position;
     _saver?.positionChanged(position);
+    // A page turn closes the panel (FR-004).
+    if (pageChanged && (_lookup?.state.isOpen ?? false)) _lookup!.close();
     if (pageChanged && mounted) {
       setState(() {});
       _loadLinksNear(position.page);
@@ -257,6 +289,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _onTap(Offset global, Offset local, double viewWidth) {
     final view = _view!;
+    // With the panel open, a tap outside it closes it (FR-004).
+    if (_lookup?.state.isOpen ?? false) {
+      _lookup!.close();
+      return;
+    }
     final point = view.pagePointAt(global);
     final action = classifyTap(
       x: local.dx,
@@ -267,6 +304,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     switch (action) {
       case ToggleControls():
         _controls.toggle();
+        if (_controls.visible && _lastPointerKind == PointerDeviceKind.mouse) {
+          _barsSettling = true;
+          _barsSettle?.cancel();
+          _barsSettle = Timer(const Duration(milliseconds: 300), () {
+            if (mounted) setState(() => _barsSettling = false);
+          });
+        }
       case PreviousPage():
         view.previous();
       case NextPage():
@@ -274,6 +318,68 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       case FollowLink(:final link):
         _followLink(link);
     }
+  }
+
+  /// Long-press, double-click: select the word under [global] and look it up (FR-001).
+  void _lookUpAt(Offset global, {bool lock = false}) {
+    final view = _view!;
+    final point = view.pagePointAt(global);
+    if (point == null) return;
+    // Pans and zooms stop until the pointer is lifted (research R6).
+    if (lock) view.setInteractionLocked(true);
+    _lookup?.lookUpAt(point);
+  }
+
+  void _lookupChanged() {
+    final state = _lookup!.state;
+    if (state is LookupNoText) {
+      ScaffoldMessenger.maybeOf(context)
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('This page has no selectable text'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+    }
+    if (state is LookupShown || state is LookupNotFound) {
+      // The hint's job is done once the reader has looked a word up (data-model.md).
+      if (!_prefs.lookupHintShown) _repo.markLookupHintShown();
+      final word = state is LookupShown ? state.result.headword : null;
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        word == null ? 'No definition found' : 'Definition of $word',
+        Directionality.of(context),
+      );
+    }
+    _rebuild();
+  }
+
+  /// Where the panel opens, chosen once per selection (FR-003).
+  PanelPlacement _placementFor(LookupState state, Size screen) {
+    final selection = state.selection;
+    if (_placement != null && identical(_placedFor, selection)) return _placement!;
+    Rect? word;
+    if (selection != null && selection.rects.isNotEmpty) {
+      final union = selection.rects.reduce((a, b) => a.expandToInclude(b));
+      word = _view!.pageRectToGlobal(selection.page, union);
+    }
+    _placedFor = selection;
+    return _placement = word == null
+        ? (edge: PanelEdge.bottom, height: screen.height / 3)
+        : panelPlacement(view: screen, word: word);
+  }
+
+  Future<void> _openDictionaryAbout() async {
+    final info = _lookup?.info;
+    if (info == null) return;
+    await showDictionaryAbout(
+      _ui,
+      info,
+      openLink: (uri) async {
+        if (await confirmWebLink(_ui, uri)) await ref.read(linkOpenerProvider).open(uri);
+      },
+    );
   }
 
   Future<void> _followLink(DocumentLink link) async {
@@ -340,6 +446,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       }
     }
     return [for (final e in byPage.entries) PageHighlight(e.key, e.value), ...out];
+  }
+
+  /// Search matches, and the word selected for lookup (FR-002).
+  List<PageHighlight> get _allHighlights {
+    final selection = _lookup?.selection;
+    if (selection == null) return _highlights;
+    return [
+      ..._highlights,
+      PageHighlight(selection.page, selection.rects, kind: HighlightKind.selection),
+    ];
   }
 
   Future<void> _openThumbnails() => _withControlsHeld(() async {
@@ -439,7 +555,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       highlightColor: theme.highlightPaintColor,
       activeHighlightColor: theme.activeHighlightPaintColor,
       selectionColor: theme.selectionPaintColor,
-      highlights: _highlights,
+      highlights: _allHighlights,
     );
   }
 
@@ -455,139 +571,199 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
     final colors = _barColors;
     final view = _view!;
-    return Theme(
-      data: _themeData(Theme.of(context)),
-      child: Builder(
-        builder: (context) {
-          _themed = context;
-          return Scaffold(
-            backgroundColor: _theme.background,
-            body: ReaderShortcuts(
-              handlers: _keys,
-              continuous: _mode == PageMode.continuous,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Semantics(
-                      key: const ValueKey('reader-page-view'),
-                      container: true,
-                      label: 'Page ${_position.page} of ${doc.pageCount}',
-                      // Screen-reader users turn pages without the edge zones (FR-040).
-                      customSemanticsActions: {
-                        const CustomSemanticsAction(label: 'Next page'): view.next,
-                        const CustomSemanticsAction(label: 'Previous page'): view.previous,
-                      },
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => TapDetector(
-                          movement: view,
-                          onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
-                          child: _factory!.build(doc, controller: view, config: _config()),
-                        ),
-                      ),
-                    ),
-                  ),
-                  IgnorePointer(
-                    key: const ValueKey('reader-controls'),
-                    ignoring: !_controls.visible,
-                    child: ExcludeSemantics(
-                      excluding: !_controls.visible,
-                      child: AnimatedOpacity(
-                        opacity: _controls.visible ? 1 : 0,
-                        duration: const Duration(milliseconds: 150),
-                        child: Listener(
-                          // Any touch on the bars counts as using them (FR-003).
-                          onPointerDown: (_) => _controls.interacted(),
-                          behavior: HitTestBehavior.translucent,
-                          child: Column(
-                            children: [
-                              ReaderTopBar(
-                                title: _book?.title ?? '',
-                                colors: colors,
-                                onBack: _back,
-                                actions: [
-                                  IconButton(
-                                    icon: const Icon(Icons.search),
-                                    tooltip: 'Search in book',
-                                    onPressed: _openSearch,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.toc),
-                                    tooltip: 'Table of contents',
-                                    onPressed: _openContents,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.grid_view),
-                                    tooltip: 'Page thumbnails',
-                                    onPressed: _openThumbnails,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.tune),
-                                    tooltip: 'Reader settings',
-                                    onPressed: _openSettings,
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              ReaderBottomBar(
-                                page: _position.page,
-                                pageCount: doc.pageCount,
-                                colors: colors,
-                                leading: [
-                                  IconButton(
-                                    icon: const Icon(Icons.zoom_out),
-                                    tooltip: 'Zoom out',
-                                    onPressed: view.zoomOut,
-                                  ),
-                                ],
-                                trailing: [
-                                  IconButton(
-                                    icon: const Icon(Icons.zoom_in),
-                                    tooltip: 'Zoom in',
-                                    onPressed: view.zoomIn,
-                                  ),
-                                ],
-                                onPageLabelTap: _openGoToPage,
-                                onSliderStart: _controls.hold,
-                                onSliderEnd: (page) {
-                                  _controls.release();
-                                  _jump(ReadingPosition(page, 0));
-                                },
-                              ),
-                            ],
+    final lookup = _lookup!.state;
+    // Back and Esc close the panel before they leave the reader (FR-004).
+    return PopScope(
+      canPop: !lookup.isOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _lookup!.close();
+      },
+      child: Theme(
+        data: _themeData(Theme.of(context)),
+        child: Builder(
+          builder: (context) {
+            _themed = context;
+            return Scaffold(
+              backgroundColor: _theme.background,
+              body: ReaderShortcuts(
+                handlers: _keys,
+                continuous: _mode == PageMode.continuous,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Semantics(
+                        key: const ValueKey('reader-page-view'),
+                        container: true,
+                        label: 'Page ${_position.page} of ${doc.pageCount}',
+                        // Screen-reader users turn pages without the edge zones (FR-040).
+                        customSemanticsActions: {
+                          const CustomSemanticsAction(label: 'Next page'): view.next,
+                          const CustomSemanticsAction(label: 'Previous page'): view.previous,
+                        },
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => Listener(
+                            onPointerDown: (e) => _lastPointerKind = e.kind,
+                            child: TapDetector(
+                              movement: view,
+                              onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
+                              onLongPress: (global, _) => _lookUpAt(global, lock: true),
+                              onLongPressEnd: () => view.setInteractionLocked(false),
+                              onDoubleClick: (global, _) => _lookUpAt(global),
+                              child: _factory!.build(doc, controller: view, config: _config()),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_search case final search?)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: MediaQuery.paddingOf(context).top + (_controls.visible ? 64 : 12),
-                      child: Center(
-                        child: SearchMatchBar(
-                          session: search,
-                          onStep: _stepMatch,
-                          onClose: search.clear,
-                          onOpen: _openSearch,
+                    IgnorePointer(
+                      key: const ValueKey('reader-controls'),
+                      ignoring: !_controls.visible || _barsSettling,
+                      child: ExcludeSemantics(
+                        excluding: !_controls.visible,
+                        child: AnimatedOpacity(
+                          opacity: _controls.visible ? 1 : 0,
+                          duration: const Duration(milliseconds: 150),
+                          child: Listener(
+                            // Any touch on the bars counts as using them (FR-003).
+                            onPointerDown: (_) => _controls.interacted(),
+                            behavior: HitTestBehavior.translucent,
+                            child: Column(
+                              children: [
+                                ReaderTopBar(
+                                  title: _book?.title ?? '',
+                                  colors: colors,
+                                  onBack: _back,
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.search),
+                                      tooltip: 'Search in book',
+                                      onPressed: _openSearch,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.toc),
+                                      tooltip: 'Table of contents',
+                                      onPressed: _openContents,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.grid_view),
+                                      tooltip: 'Page thumbnails',
+                                      onPressed: _openThumbnails,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.tune),
+                                      tooltip: 'Reader settings',
+                                      onPressed: _openSettings,
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                ReaderBottomBar(
+                                  page: _position.page,
+                                  pageCount: doc.pageCount,
+                                  colors: colors,
+                                  leading: [
+                                    IconButton(
+                                      icon: const Icon(Icons.zoom_out),
+                                      tooltip: 'Zoom out',
+                                      onPressed: view.zoomOut,
+                                    ),
+                                  ],
+                                  trailing: [
+                                    IconButton(
+                                      icon: const Icon(Icons.zoom_in),
+                                      tooltip: 'Zoom in',
+                                      onPressed: view.zoomIn,
+                                    ),
+                                  ],
+                                  onPageLabelTap: _openGoToPage,
+                                  onSliderStart: _controls.hold,
+                                  onSliderEnd: (page) {
+                                    _controls.release();
+                                    _jump(ReadingPosition(page, 0));
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  if (_jumpBack.target case final target?)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      // Above the bottom bar when it shows; near the edge otherwise.
-                      bottom: MediaQuery.paddingOf(context).bottom + (_controls.visible ? 120 : 24),
-                      child: Center(
-                        child: JumpBackChip(page: target.page, onPressed: _goBack),
+                    if (_search case final search?)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: MediaQuery.paddingOf(context).top + (_controls.visible ? 64 : 12),
+                        child: Center(
+                          child: SearchMatchBar(
+                            session: search,
+                            onStep: _stepMatch,
+                            onClose: search.clear,
+                            onOpen: _openSearch,
+                          ),
+                        ),
                       ),
-                    ),
-                ],
+                    if (_jumpBack.target case final target?)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        // Above the bottom bar when it shows; near the edge otherwise.
+                        bottom:
+                            MediaQuery.paddingOf(context).bottom + (_controls.visible ? 120 : 24),
+                        child: Center(
+                          child: JumpBackChip(page: target.page, onPressed: _goBack),
+                        ),
+                      ),
+                    if (!_prefs.lookupHintShown && !lookup.isOpen)
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        // Above the bottom bar, and above the "Back to page" chip if it shows.
+                        bottom:
+                            MediaQuery.paddingOf(context).bottom +
+                            (_controls.visible ? 120 : 24) +
+                            (_jumpBack.target != null ? 56 : 0),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 560),
+                            child: LookupHint(onDismiss: _repo.markLookupHintShown),
+                          ),
+                        ),
+                      ),
+                    if (lookup.isOpen) _panel(context, lookup),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _panel(BuildContext context, LookupState state) {
+    final screen = MediaQuery.sizeOf(context);
+    final placement = _placementFor(state, screen);
+    final top = placement.edge == PanelEdge.top;
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: top ? 0 : null,
+      bottom: top ? null : 0,
+      child: Align(
+        alignment: top ? Alignment.topCenter : Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: LookupPanel(
+            state: state,
+            placement: placement,
+            viewHeight: screen.height,
+            background: _theme.barBackground,
+            foreground: _theme.barForeground,
+            info: _lookup!.info,
+            onClose: _lookup!.close,
+            onAbout: _openDictionaryAbout,
+          ),
+        ),
       ),
     );
   }

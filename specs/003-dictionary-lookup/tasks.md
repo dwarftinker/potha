@@ -156,7 +156,7 @@ the web store and the interaction lock.
 
 ### Tests for User Story 1 (write first, confirm they fail) ⚠️
 
-- [ ] T027 [P] [US1] Unit-test `hitTest` and `WordExtractor.wordAt` / `queryFor` in test/unit/reader/word_extractor_test.dart, using page texts built from lines with character rects:
+- [X] T027 [P] [US1] Unit-test `hitTest` and `WordExtractor.wordAt` / `queryFor` in test/unit/reader/word_extractor_test.dart, using page texts built from lines with character rects:
   - **Hit test**: the character under the point; the nearest character on the line within half a line height; whitespace and gaps give null.
   - **Word rules** (FR-007 to FR-011):
     - “Hello,” → hello;
@@ -169,8 +169,8 @@ the web store and the interaction lock.
     - numbers, "https://x.org", "www.x.org", "potha.app" and "a@b.org" → null;
     - text with U+FFFD or private-use characters → `garbled`;
     - capitalised mid-sentence ("in Turkey") vs at the sentence start.
-- [ ] T028 [P] [US1] Unit-test `panelPlacement` in test/unit/reader/panel_placement_test.dart: a word in the top two thirds gives the bottom panel at ≤ 1/3 of the view height; a word whose rect would be covered gives the top; when even the top would cover it (a word filling the middle), the edge farther from it is used; the first height is never over 1/3 (FR-003)
-- [ ] T029 [P] [US1] Unit-test `LookupController` in test/unit/reader/lookup_controller_test.dart (fake lexicon, store and cache):
+- [X] T028 [P] [US1] Unit-test `panelPlacement` in test/unit/reader/panel_placement_test.dart: a word in the top two thirds gives the bottom panel at ≤ 1/3 of the view height; a word whose rect would be covered gives the top; when even the top would cover it (a word filling the middle), the edge farther from it is used; the first height is never over 1/3 (FR-003)
+- [X] T029 [P] [US1] Unit-test `LookupController` in test/unit/reader/lookup_controller_test.dart (fake lexicon, store and cache):
   - a long-press point resolves to `shown` with the selection;
   - an empty spot leaves `idle`;
   - a page without text gives `noText`;
@@ -178,7 +178,7 @@ the web store and the interaction lock.
   - while the store isn't ready → `preparing(progress)`, then `shown` once ready;
   - **latest wins** (FR-014, SC-007): ten requests where earlier ones resolve later end showing the tenth;
   - `close()` clears the selection.
-- [ ] T030 [P] [US1] Widget-test the main flow in test/widget/lookup_panel_test.dart (fakes):
+- [X] T030 [P] [US1] Widget-test the main flow in test/widget/lookup_panel_test.dart (fakes):
   - long-press a word → selection highlight + panel with headword, IPA, "Noun" / "Adjective" groups, numbered senses, examples (FR-005);
   - it closes on a tap outside, a swipe down, Esc, and system back (`handlePopRoute`), each clearing the selection;
   - a page turn closes it;
@@ -186,26 +186,26 @@ the web store and the interaction lock.
   - a mouse double-click looks up and leaves the controls as they were;
   - a long-press on a no-text page shows "This page has no selectable text";
   - the panel footer opens "About this dictionary" with source, licence and dump date (FR-034).
-- [ ] T031 [P] [US1] Widget-test the hint in test/widget/lookup_hint_test.dart: shown on the first reader open with the long-press, double-click and tap-to-define wording; Got it hides it and sets `lookupHintShown`; not shown on the next open (FR-006)
+- [X] T031 [P] [US1] Widget-test the hint in test/widget/lookup_hint_test.dart: shown on the first reader open with the long-press, double-click and tap-to-define wording; Got it hides it and sets `lookupHintShown`; not shown on the next open (FR-006)
 
 ### Implementation for User Story 1
 
-- [ ] T032 [P] [US1] Implement `hitTest` and `WordExtractor` (`wordAt`, `queryFor`; `extendTo` comes in US5) in lib/features/reader/domain/word_extractor.dart, with `WordSelection` and `LookupQuery` per data-model.md; make T027 pass
-- [ ] T033 [P] [US1] Implement `panelPlacement` in lib/features/reader/domain/panel_placement.dart; make T028 pass
-- [ ] T034 [P] [US1] Test first, then implement a first `LookupResolver` (Principle IV; analysis C1):
+- [X] T032 [P] [US1] Implement `hitTest` and `WordExtractor` (`wordAt`, `queryFor`; `extendTo` comes in US5) in lib/features/reader/domain/word_extractor.dart, with `WordSelection` and `LookupQuery` per data-model.md; make T027 pass
+- [X] T033 [P] [US1] Implement `panelPlacement` in lib/features/reader/domain/panel_placement.dart; make T028 pass
+- [X] T034 [P] [US1] Test first, then implement a first `LookupResolver` (Principle IV; analysis C1):
   - Write test/unit/reader/lookup_resolver_test.dart (fake lexicon): an exact entry is returned; candidates are tried in order, so the joined line-break word ("example") wins over the hyphenated one ("exam-ple"); no entry gives `notFound`. Run it and see it fail.
   - Then implement lib/features/reader/domain/lookup_resolver.dart: exact entries for each candidate in order, else `notFound` (inflections come in US2), with `LookupResult` per data-model.md; make the test pass.
-- [ ] T035 [US1] Implement `LookupController` and its provider in lib/features/reader/lookup_controller.dart: request ids, `lookUpAt`, `close`, the `LookupState` states in data-model.md, and the store status mapped to `preparing`; make T029 pass
-- [ ] T036 [US1] Create lib/features/reader/ui/lookup_panel.dart, per contracts/lookup-ui.md "Panel":
+- [X] T035 [US1] Implement `LookupController` and its provider in lib/features/reader/lookup_controller.dart: request ids, `lookUpAt`, `close`, the `LookupState` states in data-model.md, and the store status mapped to `preparing`; make T029 pass
+- [X] T036 [US1] Create lib/features/reader/ui/lookup_panel.dart, per contracts/lookup-ui.md "Panel":
   - an animated overlay, bottom or top from `panelPlacement`, with a draggable sheet (first height ≤ 1/3, max 85%);
   - the entry view: headword, IPA, sections by part of speech, numbered senses, tags, examples;
   - the not-found view and the preparing / downloading view;
   - a source footer;
   - reader theme colours;
   - a swipe toward its edge closes it.
-- [ ] T037 [P] [US1] Create lib/features/reader/ui/dictionary_about.dart (dialog: source, dump date, licence, links opened through 002's web-link confirmation and `LinkOpener`). Register the dictionary licence with `LicenseRegistry.addLicense` (reading assets/dictionary/LICENSE.md) in lib/main.dart. Add "About Potha" to the library menu in lib/features/library/ui/library_screen.dart, opening `showLicensePage` (FR-034)
-- [ ] T038 [P] [US1] Create lib/features/reader/ui/lookup_hint.dart (dismissible banner, FR-006)
-- [ ] T039 [US1] Wire lookup into lib/features/reader/ui/reader_screen.dart:
+- [X] T037 [P] [US1] Create lib/features/reader/ui/dictionary_about.dart (dialog: source, dump date, licence, links opened through 002's web-link confirmation and `LinkOpener`). Register the dictionary licence with `LicenseRegistry.addLicense` (reading assets/dictionary/LICENSE.md) in lib/main.dart. Add "About Potha" to the library menu in lib/features/library/ui/library_screen.dart, opening `showLicensePage` (FR-034)
+- [X] T038 [P] [US1] Create lib/features/reader/ui/lookup_hint.dart (dismissible banner, FR-006)
+- [X] T039 [US1] Wire lookup into lib/features/reader/ui/reader_screen.dart:
   - `TapDetector.onLongPress` / `onDoubleClick` → `LookupController.lookUpAt`, with the interaction lock from long-press until pointer up;
   - the selection as a `HighlightKind.selection` highlight;
   - the panel in the reader's `Stack`;

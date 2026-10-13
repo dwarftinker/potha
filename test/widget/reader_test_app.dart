@@ -450,3 +450,15 @@ Future<void> leaveReader(WidgetTester tester) async {
   }
   expect(find.byType(ReaderScreen, skipOffstage: false), findsNothing);
 }
+
+/// Closes the one-time lookup hint if it is showing (003 FR-006).
+Future<void> dismissHint(WidgetTester tester) async {
+  final gotIt = find.text('Got it');
+  if (gotIt.evaluate().isEmpty) return;
+  await tester.tap(gotIt);
+  await settleReal(tester);
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+/// A reader screen for [bookId], for tests that open a book a second time.
+Widget readerScreenFor(String bookId) => ReaderScreen(bookId: bookId);
