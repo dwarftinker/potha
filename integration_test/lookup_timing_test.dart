@@ -13,6 +13,9 @@ import 'package:potha/main.dart' as app;
 
 import 'helpers.dart';
 
+/// TapDetector's long-press threshold.
+const longPressMs = 500;
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
@@ -52,21 +55,20 @@ void main() {
       // press at once.
       await settleFor(tester, Duration(milliseconds: cached ? 700 : 120));
       final at = globalOnPage(view, page, await wordOn(page));
-      final gesture = await tester.startGesture(at);
-      // The long-press is recognised when the view locks (TapDetector, 500 ms).
-      await pumpUntilTrue(tester, () => view.interactionLock.value, reason: 'long-press');
+      // Timed from the finger going down, polling every frame; the long-press is
+      // recognised 500 ms later (TapDetector), so that is subtracted.
       final watch = Stopwatch()..start();
-      await pumpUntilTrue(
-        tester,
-        () =>
-            find.byKey(lookupPanelKey).evaluate().isNotEmpty &&
-            find
-                .descendant(of: find.byKey(lookupPanelKey), matching: find.textContaining('1. '))
-                .evaluate()
-                .isNotEmpty,
-        reason: 'definition on page $page',
-      );
-      times.add(watch.elapsedMilliseconds);
+      final gesture = await tester.startGesture(at);
+      bool shown() => find
+          .descendant(of: find.byKey(lookupPanelKey), matching: find.textContaining('1. '))
+          .evaluate()
+          .isNotEmpty;
+      while (!shown()) {
+        if (watch.elapsed > const Duration(seconds: 20)) fail('no definition on page $page');
+        await tester.pump();
+      }
+      expect(view.interactionLock.value, isTrue, reason: 'locked by the long-press');
+      times.add(watch.elapsedMilliseconds - longPressMs);
       await gesture.up();
       await systemBack(tester); // closes the panel
     }

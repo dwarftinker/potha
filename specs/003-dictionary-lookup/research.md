@@ -90,6 +90,17 @@ pinned to a release at least two weeks old.
   quickstart measures peak memory in Chrome on the S24. If that's too much, the fallback
   is to stream the decompressed bytes straight into drift's OPFS file for that name. That
   depends on drift's storage layout, so it's pinned to the drift version.
+- **Measured (T006/T082, 2026-10-13, S24, Chrome 154, release build over `adb reverse`)**:
+  the first load requests nothing from the dictionary. Opening a book downloads the
+  24,987,815-byte asset (0.9 s over USB) and sets it up. Lookups then work in airplane
+  mode, and a reload doesn't download it again. drift chose `sharedIndexedDb`: Chrome on
+  Android has no dedicated workers in shared workers. With COOP/COEP headers the page
+  was cross-origin isolated but drift's worker still failed ("workerError"), so OPFS
+  wasn't reached. The tab's renderer went from 270 MB to a **712 MB peak** and settled
+  at 407 MB with the dictionary open (the IndexedDB VFS keeps the database in memory).
+  That's fine on the S24 (8 GB) but risky on a 3–4 GB phone. The streaming fallback
+  above (or getting drift's OPFS mode working, with the hosting headers) would cut the
+  peak. Decision pending (the user's).
 - **Why gzip in the asset**: the APK, the iOS bundle and web hosting all get the same
   small file. Web progress is then measured on a known size, without depending on the
   server compressing the response.
@@ -219,6 +230,11 @@ pinned to a release at least two weeks old.
   002 (no double-tap wait) is kept, which tap-to-define needs (FR-016).
 - **Alternatives considered**: `LongPressGestureRecognizer` (joins the arena, so it would
   compete with pdfrx's pan recogniser and its timing would vary).
+- **Measured (T007, 2026-10-13)**: on the S24 (native, `lookup_flow_test.dart`) a
+  long-press on "give" dragged to "up" selects "give up" without moving the page, in
+  paged mode; at 3× zoom, a long-press selects the word in paged and continuous modes.
+  In Chrome on the S24, a long-press dragged across three words grows the selection and
+  the page stays still. The lock works as planned; no alternative was needed.
 
 ## R7. The panel
 

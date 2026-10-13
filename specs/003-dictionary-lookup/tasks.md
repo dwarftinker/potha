@@ -52,15 +52,15 @@ the web store and the interaction lock.
   - page 2: "exam-" / "ple" and "well-" / "known" split across line ends;
   - page 3: words in the bottom third, for top placement.
   Also write test/fixtures/lookup_garbled.pdf (text in a Type 3 font with no ToUnicode map, so extraction gives unmapped characters). Document both in the script header
-- [ ] T006 Spike the web dictionary store (research R2) in the throwaway app ../potha_spike, on the S24 in Chrome over `adb reverse`:
+- [X] T006 Spike the web dictionary store (research R2) in the throwaway app ../potha_spike, on the S24 in Chrome over `adb reverse`:
   1. `fetch` the gzip asset with progress;
   2. `DecompressionStream('gzip')`;
   3. `driftDatabase(name: 'dictionary-en-test', web: DriftWebOptions(initializeDatabase: …))`;
   4. one query.
   Measure download and set-up time and peak memory (Chrome remote DevTools). Record the result, and whether the direct-to-OPFS fallback is needed, in specs/003-dictionary-lookup/research.md R2
-  - **Status (2026-10-13)**: not run, because the phone wasn't connected. Built to the planned approach instead (`initializeDatabase`). Download, progress, decompression, offline and retry are tested in desktop Chrome (T017). The S24 timing and peak-memory check remain.
-- [ ] T007 Spike the interaction lock (research R6) in ../potha_spike: a `Listener` long-press (500 ms) over `PdfViewer` that sets `panEnabled` / `scaleEnabled` false until pointer up, then drags without panning. Test it on the S24 and in Chrome on the phone, in paged and continuous layouts. Record the result in research.md R6 (works, or the alternative used)
-  - **Status (2026-10-13)**: not run on the phone. The lock (`panEnabled`/`scaleEnabled` off plus the paged drag handler) blocks drags in both modes in `test/widget/pdf_view_test.dart` with real pdfrx. Mid-gesture behaviour on the S24 and mobile Chrome remains.
+  - **Status (2026-10-13)**: measured with the real store (the planned approach was already built) on the S24 in Chrome: download 0.9 s over USB, peak renderer memory 712 MB (270 MB before, 407 MB after). Recorded in research R2; whether to build the direct-to-OPFS fallback is the user's decision.
+- [X] T007 Spike the interaction lock (research R6) in ../potha_spike: a `Listener` long-press (500 ms) over `PdfViewer` that sets `panEnabled` / `scaleEnabled` false until pointer up, then drags without panning. Test it on the S24 and in Chrome on the phone, in paged and continuous layouts. Record the result in research.md R6 (works, or the alternative used)
+  - **Status (2026-10-13)**: works on the S24 (native, paged and continuous, at 3× zoom; `lookup_flow_test.dart`) and in Chrome on the S24 (long-press drag across words, page stays still). Recorded in research R6.
 
 **Checkpoint**: The dictionary builds within budget, the sample and fixtures exist, and both risky mechanisms are confirmed before the lookup code is built.
 
@@ -272,15 +272,15 @@ the web store and the interaction lock.
   - **mobile**: `unpacking` shows "Preparing the dictionary…", then the result.
 - [X] T048 [P] [US3] Extend test/unit/no_network_test.dart: with HTTP forbidden, look up words via `LookupController` over the sample dictionary (exact, inflected, not found), record history, and toggle tap-to-define. Expect no HTTP attempts, and `OnlineDictionary` is never called (FR-032)
 - [X] T049 [P] [US3] Write test/eval/coverage_eval_test.dart and test/fixtures/dictionary/prose_1000.txt (1,000 word tokens from public-domain Project Gutenberg prose, names, numbers and symbols removed, with the source cited in the file header). Each token runs through `WordExtractor` rules + `LookupResolver` on the full dictionary (skipped if absent); it reports the share with an entry and fails below 95% (SC-001)
-- [ ] T050 [P] [US3] Write integration_test/lookup_timing_test.dart (profile, `flutter drive --no-dds`, as reader_perf_test.dart). Import lookup_prose.pdf and text_500.pdf, then long-press 20 words on different pages, half on pages whose text isn't cached yet. Measure from the long-press recognised to the panel's first frame showing the entry; report p50 and p95 through `test_driver/perf_driver.dart`. p95 ≤ 300 ms is the target (SC-002, research R8)
-  - **Status**: written, not yet run (needs the S24).
+- [X] T050 [P] [US3] Write integration_test/lookup_timing_test.dart (profile, `flutter drive --no-dds`, as reader_perf_test.dart). Import lookup_prose.pdf and text_500.pdf, then long-press 20 words on different pages, half on pages whose text isn't cached yet. Measure from the long-press recognised to the panel's first frame showing the entry; report p50 and p95 through `test_driver/perf_driver.dart`. p95 ≤ 300 ms is the target (SC-002, research R8)
+  - **Status**: ran on the S24 (2026-10-13): p95 91 ms, p50 76 ms. The clock now starts at finger down (minus the 500 ms long-press) and polls every frame; the first version timed from the lock flag and undercounted.
 
 ### Implementation for User Story 3
 
 - [X] T051 [US3] Show the store states in lib/features/reader/ui/lookup_panel.dart (progress, offline message, preparing); make T047 pass
 - [X] T052 [US3] Start the mobile unpack at app start through lib/core/dictionary/dictionary_warmup.dart: `startDictionaryUnpack()` by conditional import, which starts the io store's `ensureStarted` after the first frame (dictionary_warmup_io.dart) and does nothing on the web, so the web first-load bundle doesn't gain the store (analysis F3). lib/app.dart only calls `startDictionaryUnpack()`; the web stays on book open. In lib/features/reader/ui/reader_screen.dart, prefetch the visible pages' text into `PageTextCache` when the view settles (idle, after position changes stop for 300 ms)
-- [ ] T053 [US3] Run T050 on the S24 and T049 against the full dictionary; record both in specs/003-dictionary-lookup/quickstart.md "Measurements". If p95 > 300 ms, profile and fix by the R8 breakdown before continuing (Principle V)
-  - **Status**: the T049 half is done (SC-001 99.8%, recorded); the S24 timing remains.
+- [X] T053 [US3] Run T050 on the S24 and T049 against the full dictionary; record both in specs/003-dictionary-lookup/quickstart.md "Measurements". If p95 > 300 ms, profile and fix by the R8 breakdown before continuing (Principle V)
+  - **Status**: done. T049 (SC-001 99.8%) and T050 (p95 91 ms) are recorded in quickstart.md.
 
 **Checkpoint**: P1 complete: a releasable offline lookup. Quickstart 1–12 and 22–25 pass on the S24 and in Chrome.
 
@@ -433,7 +433,7 @@ the web store and the interaction lock.
 **Purpose**: Hyphenation accuracy, device and browser verification, accessibility and docs.
 
 - [X] T079 [P] Write test/eval/hyphenation_eval_test.dart and test/fixtures/dictionary/hyphenation.tsv (at least 100 cases: line-break-split ordinary words, and genuine hyphenated compounds split at their hyphen). Run them through `WordExtractor` + `LookupResolver` on the full dictionary (skipped if absent); report the share joined correctly; fail below 95% or if any genuine compound is wrongly joined (SC-004). Record the result in quickstart.md
-- [ ] T080 [P] Write integration_test/lookup_flow_test.dart for the S24 and Chrome, with lookup_prose.pdf imported through `XFile` (as in 001/002):
+- [X] T080 [P] Write integration_test/lookup_flow_test.dart for the S24 and Chrome, with lookup_prose.pdf imported through `XFile` (as in 001/002):
   - long-press "melancholy" → panel → tap a definition word → Back → close by system back;
   - "mice" note;
   - long-press drag "give" → "up";
@@ -441,19 +441,20 @@ the web store and the interaction lock.
   - history shows the words;
   - scanned.pdf long-press message;
   - zoomed to 3× and in continuous mode: long-press a word, check the selection rect sits on the word and the panel doesn't cover it (FR-030, analysis G1).
-  - **Status**: written, not yet run (needs the S24 and Chrome).
+  - **Status**: passes on the S24 (2026-10-13). Fixes on the first runs: word positions come from a separate copy of the book and the binding runs `fullyLive` (waiting on the reader's own document hung); at 3× the test pans the word into view (`setZoom` zooms about the centre). Chrome runs were done by hand (T082).
 - [X] T081 [P] Extend test/widget/accessibility_test.dart for lookup (written as test/widget/lookup_accessibility_test.dart, next to 002's reader_accessibility_test.dart):
   - the panel, handles, chip, hint, history sheet and About have labels;
   - the panel is announced, and each sense is a separate node (FR-033);
   - `androidTapTargetGuideline` and `textContrastGuideline` pass in the light, dark and sepia themes;
   - at text scale 2.0 the panel keeps its first size, scrolls, and doesn't overflow.
-- [ ] T082 Check the web build: run `tool/build_web.sh` and serve it.
+- [X] T082 Check the web build: run `tool/build_web.sh` and serve it.
   - The first load makes no dictionary request and its size is unchanged from 002 (record it); `main.dart.js` contains no dictionary-store code (T052's warm-up is a no-op on the web).
   - Opening a book downloads the dictionary with progress, and lookups work offline after a reload.
   - Peak memory in Chrome on the S24 is recorded.
   Record the results in specs/003-dictionary-lookup/quickstart.md (FR-022, research R2)
-  - **Status**: the build is checked. There is no dictionary code in `main.dart.js`, and the first load is +23.5 KB gzipped (recorded in the quickstart). The live download, offline reload and S24 memory remain.
-- [ ] T083 Measure on the S24: the first-launch unpack time after a fresh install, and the APK size before and after (`flutter build apk --release --analyze-size` or the APK file sizes). Record them in quickstart.md "Measurements"
+  - **Status**: done (2026-10-13): no dictionary request on first load; download on book open; lookups in airplane mode; no new download after a reload; peak memory recorded (quickstart, research R2).
+- [X] T083 Measure on the S24: the first-launch unpack time after a fresh install, and the APK size before and after (`flutter build apk --release --analyze-size` or the APK file sizes). Record them in quickstart.md "Measurements"
+  - **Status**: done (2026-10-13): unpack 437 ms (`integration_test/dictionary_unpack_timing_test.dart`); APK 81,967,120 → 109,592,051 bytes.
 - [ ] T084 Run quickstart scenarios 1–26 on the Galaxy S24 and in desktop Chrome and Chrome on the phone. Record results, bugs found and fixes in specs/003-dictionary-lookup/checklists/verification.md (the 002 format). Fix or justify any performance miss in plan.md (Principle V). SC-005 (five first-time users) is recorded when the user runs it
 - [X] T085 Update CLAUDE.md:
   - 003 status;

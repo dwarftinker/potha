@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:potha/core/dictionary/dictionary_store.dart';
 import 'package:potha/core/document/document_format.dart';
+import 'package:potha/core/document/pdf/pdf_document_format.dart';
 import 'package:potha/core/document/pdf/pdf_document_view.dart';
 import 'package:potha/core/document/pdf/pdf_view_controller.dart';
 import 'package:potha/features/reader/data/reader_repository.dart';
@@ -29,11 +30,16 @@ List<TestPage> _book() => [
 ];
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Frames run on their own, so pdfrx's work completes inside runAsync (with the default
+  // policy, waiting on the document's text hangs).
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
+  // Word positions come from a separate copy of the book: waiting on the reader's own
+  // document in runAsync hangs (its work needs frames pumped).
+  late ReaderDocument copy;
   Future<Offset> wordOn(WidgetTester tester, PdfViewController view, String word) async {
-    final doc = tester.widget<PdfDocumentView>(find.byType(PdfDocumentView)).document;
-    final text = (await tester.runAsync(() => doc.loadPageText(1)))!;
+    final text = (await tester.runAsync(() => copy.loadPageText(1)))!;
     final i = text.text.indexOf(word);
     expect(i, isNot(-1), reason: '"$word" on page 1');
     return globalOnPage(view, 1, text.charRects[i + 1].center);
@@ -60,7 +66,14 @@ void main() {
     await app.main();
     await tester.pumpAndSettle();
     final title = 'Lookup ${DateTime.now().microsecondsSinceEpoch}';
-    await importBook(tester, title, buildReaderPdf(_book()));
+    final bytes = buildReaderPdf(_book());
+    await importBook(tester, title, bytes);
+    copy = (await tester.runAsync(
+      () => const PdfDocumentFormat().open(
+        BookFileRef(readAll: () async => bytes, sizeBytes: bytes.length),
+      ),
+    ))!;
+    addTearDown(() => tester.runAsync(copy.close));
     final store = containerOf(tester).read(dictionaryStoreProvider)..ensureStarted();
     await tester.runAsync(() => store.ready.timeout(const Duration(minutes: 2)));
     final view = await openBook(tester, title);
@@ -149,7 +162,16 @@ void main() {
       await settleFor(tester, const Duration(milliseconds: 600));
       await view.setZoom(3);
       await settleFor(tester, const Duration(milliseconds: 600));
+      // setZoom zooms about the centre: pan the word (top left) into the middle.
+      final centre = Offset(size.width / 2, size.height / 2);
+      await tester.timedDragFrom(
+        centre,
+        centre - await wordOn(tester, view, 'melancholy'),
+        const Duration(milliseconds: 1500),
+      );
+      await settleFor(tester, const Duration(milliseconds: 800));
       final at = await wordOn(tester, view, 'melancholy');
+      expect((Offset.zero & size).contains(at), isTrue, reason: 'the word is on screen: $at');
       await longPress(tester, at);
       expect(find.byKey(lookupPanelKey), findsOneWidget);
       final panel = tester.getRect(find.byKey(lookupPanelKey));

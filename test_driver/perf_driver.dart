@@ -8,7 +8,14 @@ Future<void> main() => integrationDriver(
       responseDataCallback: (data) async {
         if (data == null) return;
         for (final key in data.keys.where((k) => data[k] is Map<String, dynamic>)) {
-          final timeline = driver.Timeline.fromJson(data[key] as Map<String, dynamic>);
+          final value = data[key] as Map<String, dynamic>;
+          if (!value.containsKey('traceEvents')) {
+            // Plain measurements (lookup_timing_test.dart): print them.
+            // ignore: avoid_print
+            print('$key: $value');
+            continue;
+          }
+          final timeline = driver.Timeline.fromJson(value);
           final summary = driver.TimelineSummary.summarize(timeline);
           await summary.writeTimelineToFile(key, pretty: true, includeSummary: true);
           final json = summary.summaryJson;

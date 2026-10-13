@@ -14,12 +14,12 @@ with GitHub Spec Kit.
 - Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`. Device tests and
   every performance target pass on the Galaxy S24 (`specs/002-pdf-reader/checklists/
   verification.md`). Open: T076 (manual quickstart run on the phone and in browsers).
-- Feature 003 (dictionary lookup) is implemented on branch `003-dictionary-lookup`; all
-  host tests, the Chrome tests and the accuracy evals pass (SC-001 99.8%, SC-003 99.0%,
-  SC-004 100%). Open, needing the phone or a person: the two spikes (T006, T007), the
-  timing run (T050/T053, SC-002), the device flow test (T080), the live web download
-  and S24 memory (T082), unpack time and APK size (T083), and the quickstart run (T084).
-  See `specs/003-dictionary-lookup/tasks.md`.
+- Feature 003 (dictionary lookup) is implemented on branch `003-dictionary-lookup`; host
+  tests, Chrome tests, evals (SC-001 99.8%, SC-003 99.0%, SC-004 100%) and the S24 device
+  tests pass: lookup p95 91 ms (SC-002), unpack 437 ms, APK +27.6 MB. Web on the S24
+  works offline but peaks at 712 MB during dictionary set-up (decision pending, research
+  R2). Open: T084 (manual quickstart run, SC-005). See
+  `specs/003-dictionary-lookup/checklists/verification.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -105,6 +105,8 @@ flutter test test/eval                     # 003 SC-001/3/4 on the full dictiona
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/lookup_timing_test.dart -d <android-device>        # 003 SC-002
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
+  --target=integration_test/dictionary_unpack_timing_test.dart -d <android-device> # 003 unpack time
+flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/reader_perf_test.dart -d <android-device>        # 002 SC-002/3/4
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/reader_open_timing_test.dart -d <android-device> # 002 SC-001/6/7
@@ -189,7 +191,7 @@ Once per project: `/speckit.constitution`. Then, for each feature:
    covers 001 T077 and 002 T077) before it is posted.
 3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline
    reloads, and bundling Noto fonts for non-Latin titles.
-4. Verify 003 on the S24 and in browsers: T006, T007, T050/T053, T080, T082–T084 in
-   `specs/003-dictionary-lookup/tasks.md`; record results in
-   `specs/003-dictionary-lookup/checklists/verification.md`.
+4. Finish verifying 003: quickstart scenarios 1–26 by hand (T084) and SC-005; decide
+   on web dictionary memory (R2: streaming fallback or drift's OPFS mode); fix the "the"
+   gloss in the dictionary build. See `specs/003-dictionary-lookup/checklists/verification.md`.
 5. Decide whether to publish a prebuilt dictionary file (needs approval).
