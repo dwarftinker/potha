@@ -33,7 +33,7 @@ with GitHub Spec Kit.
 | State | Riverpod | |
 | Local DB | `drift` (SQLite; WASM on web) | Library, progress, highlights, lookup history. |
 | File storage | App support dir on mobile (not documents, so books stay out of the iOS Files app and document backups); OPFS with IndexedDB fallback on web | The app keeps its own copy of imported books. See specs/001-library-and-import/research.md R3. |
-| Dictionary | Bundled offline SQLite (WordNet plus a lemma table); optional online fallback | Offline-first, lookup under 300 ms. Wiktionary data is CC BY-SA and needs attribution. |
+| Dictionary | English Wiktionary (wiktextract extract) built into a read-only SQLite file by `tool/build_dictionary.py`; inside the install on mobile, downloaded on first book open on the web; online fallback via Wikimedia's definition API on request | 003 clarifications and research R1–R3, R9. CC BY-SA 4.0: credit shown in the panel and About. |
 | Sync | Later (Supabase or Firebase) | Out of scope for v0.1. |
 
 | PDF metadata | Own pure-Dart reader (`lib/core/document/pdf/pdf_metadata_reader.dart`) | pdfrx has no title/author API. Replace when pdfrx adds one (T077). |
@@ -152,8 +152,9 @@ Once per project: `/speckit.constitution`. Then, for each feature:
   positions. Dictionary is a bundled SQLite database (WordNet + lemma table) accessed via
   drift, with an optional online fallback. Lookup UI is a modal bottom sheet. Word
   extraction and lemmatisation are pure Dart services with unit tests."
-- Open questions for `/speckit.clarify` on 003: the dictionary source and licence, and
-  whether tap-to-define is on by default.
+- 003 is clarified (Wiktionary, tap-to-define off by default, Wikimedia online search,
+  dictionary inside the mobile install, one history line per word per book) and planned
+  (`specs/003-dictionary-lookup/plan.md`).
 
 ## Next steps
 
