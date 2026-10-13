@@ -33,6 +33,7 @@ and fails above 25 MB / 90 MB (research R1). Record the result here:
 | 2026-10-13, + usage examples only, phrases ≤ 4 words in top 20k, names in top 50k | 200,000 | 176,582 | 24.8 MiB | 66.9 MiB (at the limit) |
 | 2026-10-13, same rules (default) | 150,000 | 166,061 | 23.6 MiB | 64.0 MiB |
 | 2026-10-13, + obsolete, dialect and abbreviation form links dropped | 150,000 | 161,174 | 21.6 MiB | 59.1 MiB |
+| 2026-10-13, + hyphenated words kept when every part is in the top 50k; spelling-variant links kept (current) | 150,000 | 178,136 | 23.8 MiB | 64.7 MiB |
 
 ## Run
 
@@ -92,8 +93,8 @@ verified (constitution v2.0.0).
 |---|---|---|
 | Gesture → definition shown, p95, 20 words, half on pages not cached (S24, profile) | ≤ 300 ms | |
 | SC-001: prose tokens with a correct definition | ≥ 95% | 99.8% (998/1000; 2026-10-13, `test/eval`) |
-| SC-003: inflected forms resolved | ≥ 95% | 99.5% (199/200; miss: ran → Scots rin) |
-| SC-004: line-break hyphenation joined | ≥ 95%, no genuine hyphen wrongly joined | |
+| SC-003: inflected forms resolved | ≥ 95% | 99.0% (198/200; misses: ran → Scots rin, sung → song) |
+| SC-004: line-break hyphenation joined | ≥ 95%, no genuine hyphen wrongly joined | 100% (111/111: 75 ordinary words, 36 compounds; none wrongly joined) |
 | Mobile unpack on first launch (S24) | measure | |
 | Web: download and set-up time on Wi-Fi; peak memory in Chrome on the S24 | measure (research R2 risk) | |
 | APK size before and after | measure | |

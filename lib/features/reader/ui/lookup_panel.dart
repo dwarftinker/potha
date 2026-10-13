@@ -271,14 +271,27 @@ class _Content extends StatelessWidget {
       LookupLoading() => [const _Waiting()],
       _ => const <Widget>[],
     };
+    // The attribution stays in view (FR-034); with large text it scrolls with the entry
+    // instead, so the panel's first size never overflows (FR-033).
+    final footer = info == null ? null : _Footer(info: info!, color: muted, onAbout: onAbout);
+    final pinned = MediaQuery.textScalerOf(context).scale(10) <= 14;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         header,
         Expanded(
-          child: ListView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 12), children: body),
+          child: ListView(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+              ),
+              if (!pinned && footer != null) footer,
+            ],
+          ),
         ),
-        if (info != null) _Footer(info: info!, color: muted, onAbout: onAbout),
+        if (pinned && footer != null) footer,
       ],
     );
   }

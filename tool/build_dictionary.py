@@ -66,6 +66,9 @@ MAX_SENSES = 12
 MAX_EXAMPLES = 2
 MAX_EXAMPLE_CHARS = 200
 PHRASE_TOP = 20000
+# wordfreq ranks "well-known" as its parts: a hyphenated word is kept when every part is
+# common enough (FR-009 looks the whole word up first).
+HYPHEN_TOP = 50000
 NAME_TOP = 50000
 MAX_PHRASE_WORDS = 4
 
@@ -86,7 +89,7 @@ LAST_TAGS = {'archaic', 'obsolete'}
 SKIP_LINK_TAGS = {
     'obsolete', 'archaic', 'dialectal', 'nonstandard', 'rare', 'misspelling',
     'eye-dialect', 'pronunciation-spelling', 'Scotland', 'Scots', 'Northern-England',
-    'abbreviation', 'initialism', 'acronym', 'alternative', 'dated', 'humorous', 'slang',
+    'abbreviation', 'initialism', 'acronym', 'dated', 'humorous', 'slang',
     'proscribed', 'colloquial', 'informal', 'poetic',
 }
 
@@ -295,7 +298,11 @@ def select_keys(db, ranks, top, trim):
     kept = {}
     for k in keys:
         words = k.split(' ')
-        if len(words) == 1:
+        if len(words) == 1 and '-' in k.strip('-'):
+            rs = [ranks.get(p) for p in k.split('-') if p]
+            if rs and all(r is not None and r <= HYPHEN_TOP for r in rs):
+                kept[k] = max(rs)
+        elif len(words) == 1:
             r = ranks.get(k)
             if r is not None and r <= top:
                 kept[k] = r

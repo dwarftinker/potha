@@ -428,7 +428,7 @@ the web store and the interaction lock.
 
 **Purpose**: Hyphenation accuracy, device and browser verification, accessibility and docs.
 
-- [ ] T079 [P] Write test/eval/hyphenation_eval_test.dart and test/fixtures/dictionary/hyphenation.tsv (at least 100 cases: line-break-split ordinary words, and genuine hyphenated compounds split at their hyphen). Run them through `WordExtractor` + `LookupResolver` on the full dictionary (skipped if absent); report the share joined correctly; fail below 95% or if any genuine compound is wrongly joined (SC-004). Record the result in quickstart.md
+- [X] T079 [P] Write test/eval/hyphenation_eval_test.dart and test/fixtures/dictionary/hyphenation.tsv (at least 100 cases: line-break-split ordinary words, and genuine hyphenated compounds split at their hyphen). Run them through `WordExtractor` + `LookupResolver` on the full dictionary (skipped if absent); report the share joined correctly; fail below 95% or if any genuine compound is wrongly joined (SC-004). Record the result in quickstart.md
 - [ ] T080 [P] Write integration_test/lookup_flow_test.dart for the S24 and Chrome, with lookup_prose.pdf imported through `XFile` (as in 001/002):
   - long-press "melancholy" → panel → tap a definition word → Back → close by system back;
   - "mice" note;
@@ -437,7 +437,7 @@ the web store and the interaction lock.
   - history shows the words;
   - scanned.pdf long-press message;
   - zoomed to 3× and in continuous mode: long-press a word, check the selection rect sits on the word and the panel doesn't cover it (FR-030, analysis G1).
-- [ ] T081 [P] Extend test/widget/accessibility_test.dart for lookup:
+- [X] T081 [P] Extend test/widget/accessibility_test.dart for lookup (written as test/widget/lookup_accessibility_test.dart, next to 002's reader_accessibility_test.dart):
   - the panel, handles, chip, hint, history sheet and About have labels;
   - the panel is announced, and each sense is a separate node (FR-033);
   - `androidTapTargetGuideline` and `textContrastGuideline` pass in the light, dark and sepia themes;

@@ -73,9 +73,18 @@ class LookupResolver {
   Future<LookupResult> resolve(LookupQuery query) async {
     if (query.garbled) return LookupResult(query);
     if (query.isPhrase) return _phrase(query);
-    for (final key in query.candidates) {
+    for (var i = 0; i < query.candidates.length; i++) {
+      final key = query.candidates[i];
       final sections = await _word(key, query.display, query.capitalisedMidSentence);
-      if (sections.isNotEmpty) return LookupResult(query, sections: sections);
+      if (sections.isEmpty) continue;
+      // A word split at a line end may be either spelling ("rundown" or "run-down");
+      // the page can't tell, so the other spelling's own entries follow.
+      for (final other in query.candidates.skip(i + 1)) {
+        for (final e in _byCase(await _lexicon.entries(other), query.capitalisedMidSentence)) {
+          sections.add(ResultSection(e));
+        }
+      }
+      return LookupResult(query, sections: sections);
     }
     if (query.parts.length > 1) {
       final sections = <ResultSection>[];

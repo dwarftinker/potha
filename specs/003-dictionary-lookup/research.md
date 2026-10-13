@@ -30,6 +30,8 @@ pinned to a release at least two weeks old.
   2. Keep a single word if it ranks in `wordfreq`'s English top *N* (N = 150,000), or if
      a kept word is one of its forms. Keep a phrase (2–4 words) if every word in it ranks
      in the top 20,000.
+     Keep a hyphenated word ("well-known") if every part ranks in the top 50,000:
+     wordfreq ranks it only by its parts (found in T079; the first builds had 14).
   3. Keep proper nouns only within the top 50,000.
   4. Cap senses at 12 per part of speech, putting archaic and obsolete senses last.
   5. Keep usage examples only (at most two per sense, ≤ 200 characters); Wiktionary's
@@ -177,7 +179,9 @@ pinned to a release at least two weeks old.
      at the start of a sentence, proper-noun entries come first; otherwise they come
      after common entries.
   6. Hyphenated words: whole word first; if it has no entry, its parts, each shown as a
-     section (FR-009).
+     section (FR-009). A word split at a line end shows the joined spelling first and
+     then the hyphenated spelling's own entries when both exist ("rundown", "run-down"):
+     the page can't say which the author meant (found in T079).
   7. Phrases: the phrase key first; if it has no entry, the first word's result under
      "No entry for "…"" (FR-019).
   **Measured (T042)**: with bases in the file's key order, SC-003 was 89.5% (dialect and

@@ -54,7 +54,7 @@ void main() {
         'exam-ple': [e('exam-ple', 'noun')],
       });
       final r = await LookupResolver(lexicon).resolve(q(['example', 'exam-ple']));
-      expect(r.sections.single.entry.headword, 'example');
+      expect(r.sections.first.entry.headword, 'example');
     });
 
     test('the next candidate is used when the first has no entry', () async {
@@ -160,9 +160,15 @@ void main() {
       expect(shown(r).map((s) => s.$1), ['well', 'well', 'known']);
     });
 
-    test('the joined line-break candidate wins over the hyphenated one', () async {
+    test('a line-break word: the joined spelling first, then the hyphenated one', () async {
       final r = await resolver.resolve(q(['example', 'exam-ple'], parts: ['exam', 'ple']));
-      expect(shown(r), [('example', null)]);
+      expect(shown(r), [('example', null), ('exam-ple', null)]);
+      final only = await resolver.resolve(q(['wellknown', 'well-known'], parts: ['well', 'known']));
+      expect(shown(only).map((s) => s.$1), [
+        'well',
+        'well',
+        'known',
+      ], reason: 'neither spelling: the parts');
     });
 
     test('no entry and no base -> notFound', () async {
