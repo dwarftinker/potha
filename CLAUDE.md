@@ -14,6 +14,12 @@ with GitHub Spec Kit.
 - Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`. Device tests and
   every performance target pass on the Galaxy S24 (`specs/002-pdf-reader/checklists/
   verification.md`). Open: T076 (manual quickstart run on the phone and in browsers).
+- Feature 003 (dictionary lookup) is implemented on branch `003-dictionary-lookup`; all
+  host tests, the Chrome tests and the accuracy evals pass (SC-001 99.8%, SC-003 99.0%,
+  SC-004 100%). Open, needing the phone or a person: the two spikes (T006, T007), the
+  timing run (T050/T053, SC-002), the device flow test (T080), the live web download
+  and S24 memory (T082), unpack time and APK size (T083), and the quickstart run (T084).
+  See `specs/003-dictionary-lookup/tasks.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
 - The root folder holds the prompts drafted for Spec Kit:
@@ -91,6 +97,13 @@ flutter test integration_test -d <android-device>
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/scroll_perf_test.dart -d <android-device>   # SC-003 frame budget
 python3 tool/make_fixtures.py --reader     # 002 reader fixtures (+ build/fixtures/long_2000.pdf)
+python3 tool/make_fixtures.py --lookup     # 003 lookup fixtures (lookup_prose.pdf, lookup_garbled.pdf)
+python3 -m venv build/dictionary/venv && build/dictionary/venv/bin/pip install wordfreq
+build/dictionary/venv/bin/python tool/build_dictionary.py --download  # full dictionary (3 GB, ~4 min)
+build/dictionary/venv/bin/python tool/build_dictionary.py --sample    # test sample (committed .gz)
+flutter test test/eval                     # 003 SC-001/3/4 on the full dictionary (skipped without)
+flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
+  --target=integration_test/lookup_timing_test.dart -d <android-device>        # 003 SC-002
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/reader_perf_test.dart -d <android-device>        # 002 SC-002/3/4
 flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
@@ -126,6 +139,17 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
 - Pinned on purpose: `package_info_plus` 10.2.1 (10.2.2 is under two weeks old; revisit
   after 2026-10-15) and `wakelock_plus` 1.8.0 (1.8.1 needs `dbus` ^0.8, which
   `desktop_drop` 0.8.x does not allow yet).
+- The dictionary (`assets/dictionary/en.sqlite.gz`, `version`) is built, not committed
+  (`LICENSE.md` is). Without it the app doesn't build: run the full build, or
+  `--sample --as-asset` for a small development dictionary. The build needs about 4 GB
+  of disk. Publishing a prebuilt file (e.g. a release asset) needs the user's approval.
+- Web tests that use drift load `test/web/sqlite3.wasm` and `drift_worker.js`, symlinks
+  to `web/`. Widget tests get a fake dictionary, network and online client from
+  `TestApp`; create fakes inside each test (their futures must be in the fake-async zone).
+- PDFium (pdfrx 2.6.5) ends a line with `\r\n` and replaces a line-end hyphen with
+  U+0002 and no line break; the word rules rely on this (003 research R4).
+- Pinned on purpose: `connectivity_plus` 7.3.1 (7.3.2 is under two weeks old; revisit
+  after 2026-10-15).
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
   while declaring ^4.0.9). Revisit after 2026-10-25.
 
@@ -153,8 +177,8 @@ Once per project: `/speckit.constitution`. Then, for each feature:
   drift, with an optional online fallback. Lookup UI is a modal bottom sheet. Word
   extraction and lemmatisation are pure Dart services with unit tests."
 - 003 is clarified (Wiktionary, tap-to-define off by default, Wikimedia online search,
-  dictionary inside the mobile install, one history line per word per book) and planned
-  (`specs/003-dictionary-lookup/plan.md`).
+  dictionary inside the mobile install, one history line per word per book), planned
+  and implemented (`specs/003-dictionary-lookup/`).
 
 ## Next steps
 
@@ -165,4 +189,7 @@ Once per project: `/speckit.constitution`. Then, for each feature:
    covers 001 T077 and 002 T077) before it is posted.
 3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline
    reloads, and bundling Noto fonts for non-Latin titles.
-4. Then feature 003 (dictionary lookup) with `/speckit.specify` and `003-dictionary-lookup.md`.
+4. Verify 003 on the S24 and in browsers: T006, T007, T050/T053, T080, T082–T084 in
+   `specs/003-dictionary-lookup/tasks.md`; record results in
+   `specs/003-dictionary-lookup/checklists/verification.md`.
+5. Decide whether to publish a prebuilt dictionary file (needs approval).

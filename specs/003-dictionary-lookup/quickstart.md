@@ -97,5 +97,7 @@ verified (constitution v2.0.0).
 | SC-004: line-break hyphenation joined | ≥ 95%, no genuine hyphen wrongly joined | 100% (111/111: 75 ordinary words, 36 compounds; none wrongly joined) |
 | Mobile unpack on first launch (S24) | measure | |
 | Web: download and set-up time on Wi-Fi; peak memory in Chrome on the S24 | measure (research R2 risk) | |
+| Web first load (`main.dart.js`, gzip -9), 002 → 003 | no dictionary code; size about unchanged | 959,237 → 982,791 bytes (+23.5 KB, +2.5%), most likely the licences page (About Potha) and the connectivity plugin's web registration (not broken down). The dictionary store, lookup code and panel are only in the deferred reader part (145,480 → 190,374 bytes). 2026-10-13 |
+| Web dictionary asset | ≤ 25 MiB | `assets/assets/dictionary/en.sqlite.gz` 24,987,617 bytes (23.8 MiB), fetched only by the reader |
 | APK size before and after | measure | |
 | SC-005: first-time users who look up a word in their first session (hands-on, 5 people) | ≥ 4 of 5 | |
