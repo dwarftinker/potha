@@ -82,6 +82,14 @@ KEEP_TAGS = {
 }
 LAST_TAGS = {'archaic', 'obsolete'}
 
+# Form links with these tags lead readers astray ("went" -> Scots "gan"); they are dropped.
+SKIP_LINK_TAGS = {
+    'obsolete', 'archaic', 'dialectal', 'nonstandard', 'rare', 'misspelling',
+    'eye-dialect', 'pronunciation-spelling', 'Scotland', 'Scots', 'Northern-England',
+    'abbreviation', 'initialism', 'acronym', 'alternative', 'dated', 'humorous', 'slang',
+    'proscribed', 'colloquial', 'informal', 'poetic',
+}
+
 # Most specific first: when one (form, base) pair has several relations, the first wins.
 RELATIONS = ['plural', 'comparative', 'superlative', 'third_person', 'present_participle',
              'past', 'past_participle', 'form']
@@ -181,9 +189,10 @@ def parse_entry(d):
         if targets and ('form-of' in tags or 'alt-of' in tags):
             # Rule 1: a form-of or alt-of sense becomes a word-form row, not a sense.
             relation = relation_for(tags) or 'form'
-            for t in targets:
-                if t.get('word'):
-                    links.append((key, lookup_key(t['word']), relation))
+            if not SKIP_LINK_TAGS & set(tags):
+                for t in targets:
+                    if t.get('word'):
+                        links.append((key, lookup_key(t['word']), relation))
             continue
         glosses = s.get('glosses') or ()
         if not glosses:
@@ -200,6 +209,8 @@ def parse_entry(d):
     for f in d.get('forms') or ():
         form = f.get('form')
         relation = relation_for(f.get('tags'))
+        if SKIP_LINK_TAGS & set(f.get('tags') or ()):
+            continue
         if not form or not relation or ' ' in form.strip():
             continue  # "more melancholy" etc. aren't forms to look up
         form_key = lookup_key(form)

@@ -82,4 +82,92 @@ void main() {
       expect(lexicon.asked, isEmpty);
     });
   });
+
+  group('inflections, capitals and hyphens (US2)', () {
+    final lexicon = MapLexicon(
+      {
+        'mouse': [e('mouse', 'noun', 'A small rodent.')],
+        'better': [e('better', 'adj'), e('better', 'noun')],
+        'good': [e('good', 'adj')],
+        'well': [e('well', 'adv'), e('well', 'noun')],
+        'building': [e('building', 'noun')],
+        'build': [e('build', 'verb')],
+        'study': [e('study', 'verb'), e('study', 'noun')],
+        'turkey': [e('turkey', 'noun', 'A bird.'), e('Turkey', 'name', 'A country.')],
+        'known': [e('known', 'adj')],
+        'example': [e('example', 'noun')],
+        'exam-ple': [e('exam-ple', 'noun')],
+      },
+      {
+        'mice': [const WordFormLink('mice', 'mouse', FormRelation.plural)],
+        'better': [
+          const WordFormLink('better', 'good', FormRelation.comparative),
+          const WordFormLink('better', 'well', FormRelation.comparative),
+        ],
+        'building': [const WordFormLink('building', 'build', FormRelation.form)],
+        'studied': [const WordFormLink('studied', 'study', FormRelation.past)],
+      },
+    );
+    final resolver = LookupResolver(lexicon);
+
+    List<(String, String?)> shown(LookupResult r) => [
+      for (final s in r.sections) (s.entry.headword, s.note),
+    ];
+
+    test('mice -> mouse with "mice – plural of mouse"', () async {
+      final r = await resolver.resolve(q(['mice']));
+      expect(shown(r), [('mouse', 'mice – plural of mouse')]);
+    });
+
+    test("better -> its own entries first, then good and well", () async {
+      final r = await resolver.resolve(q(['better']));
+      expect(shown(r), [
+        ('better', null),
+        ('better', null),
+        ('good', 'better – comparative of good'),
+        ('well', 'better – comparative of well'),
+        ('well', null),
+      ]);
+    });
+
+    test('building -> the noun first, then build', () async {
+      final r = await resolver.resolve(q(['building']));
+      expect(shown(r), [('building', null), ('build', 'building – form of build')]);
+    });
+
+    test('studied -> study via forms; the display word is used in the note', () async {
+      final r = await resolver.resolve(q(['studied'], display: 'Studied'));
+      expect(r.sections.first.note, 'Studied – past tense of study');
+      expect(r.sections.map((s) => s.entry.pos), ['verb', 'noun']);
+    });
+
+    test('studies -> study via the rules when the forms are missing', () async {
+      final r = await resolver.resolve(q(['studies']));
+      expect(shown(r).first, ('study', 'studies – form of study'));
+    });
+
+    test('Turkey mid-sentence: proper noun first; otherwise common first (FR-010)', () async {
+      final mid = await resolver.resolve(
+        const LookupQuery(candidates: ['turkey'], display: 'Turkey', capitalisedMidSentence: true),
+      );
+      expect(mid.sections.map((s) => s.entry.pos), ['name', 'noun']);
+      final start = await resolver.resolve(q(['turkey'], display: 'Turkey'));
+      expect(start.sections.map((s) => s.entry.pos), ['noun', 'name']);
+    });
+
+    test('a hyphenated word without an entry shows its parts as sections (FR-009)', () async {
+      final r = await resolver.resolve(q(['well-known'], parts: ['well', 'known']));
+      expect(shown(r).map((s) => s.$1), ['well', 'well', 'known']);
+    });
+
+    test('the joined line-break candidate wins over the hyphenated one', () async {
+      final r = await resolver.resolve(q(['example', 'exam-ple'], parts: ['exam', 'ple']));
+      expect(shown(r), [('example', null)]);
+    });
+
+    test('no entry and no base -> notFound', () async {
+      final r = await resolver.resolve(q(['zorblaxes']));
+      expect(r.found, isFalse);
+    });
+  });
 }

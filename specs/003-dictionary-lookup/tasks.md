@@ -229,11 +229,11 @@ the web store and the interaction lock.
 
 ### Tests for User Story 2 (write first, confirm they fail) ⚠️
 
-- [ ] T040 [P] [US2] Unit-test `Lemmatiser` in test/unit/reader/lemmatiser_test.dart. Each rule gives candidate bases:
+- [X] T040 [P] [US2] Unit-test `Lemmatiser` in test/unit/reader/lemmatiser_test.dart. Each rule gives candidate bases:
   - studies → study; studied → study; stopped → stop; running → run; making → make; boxes → box; happier → happy; biggest → big;
   - candidates are only kept if `hasEntry` is true (fake lexicon);
   - irregular forms are not invented ("mice" gives nothing from rules).
-- [ ] T041 [P] [US2] Extend test/unit/reader/lookup_resolver_test.dart (from T034) with inflection ordering (fake lexicon):
+- [X] T041 [P] [US2] Extend test/unit/reader/lookup_resolver_test.dart (from T034) with inflection ordering (fake lexicon):
   - mice → mouse with "mice – plural of mouse";
   - better → better's own entries first, then good with "comparative of good";
   - building → noun building first, then build with "form of build";
@@ -242,14 +242,14 @@ the web store and the interaction lock.
   - well-known whole, else its parts as sections (FR-009);
   - the joined line-break candidate wins over the hyphenated one when both exist;
   - no entry and no base → `notFound`.
-- [ ] T042 [P] [US2] Write test/eval/inflections_eval_test.dart and test/fixtures/dictionary/inflections_200.tsv (200 common inflected forms with the expected base: regular, irregular, comparatives, participles). Against the full dictionary (skipped if absent), it reports the share whose first base is correct and fails below 95% (SC-003)
-- [ ] T043 [P] [US2] Widget-test notes in test/widget/lookup_inflection_test.dart: looking up "mice" shows the "mouse" entry under "mice – plural of mouse"; "building" shows the noun first and then "build"
+- [X] T042 [P] [US2] Write test/eval/inflections_eval_test.dart and test/fixtures/dictionary/inflections_200.tsv (200 common inflected forms with the expected base: regular, irregular, comparatives, participles). Against the full dictionary (skipped if absent), it reports the share whose first base is correct and fails below 95% (SC-003)
+- [X] T043 [P] [US2] Widget-test notes in test/widget/lookup_inflection_test.dart: looking up "mice" shows the "mouse" entry under "mice – plural of mouse"; "building" shows the noun first and then "build"
 
 ### Implementation for User Story 2
 
-- [ ] T044 [P] [US2] Implement `Lemmatiser` in lib/features/reader/domain/lemmatiser.dart; make T040 pass
-- [ ] T045 [US2] Extend `LookupResolver` with forms, the rule fallback, notes (relation → wording: "plural of", "past tense of", "past participle of", "present participle of", "third-person singular of", "comparative of", "superlative of", "form of"), capitalisation ordering and hyphen parts; make T041 pass
-- [ ] T046 [US2] Show notes and multiple entry sections in lib/features/reader/ui/lookup_panel.dart; make T043 pass; run T042 against the full dictionary and record the result in quickstart.md
+- [X] T044 [P] [US2] Implement `Lemmatiser` in lib/features/reader/domain/lemmatiser.dart; make T040 pass
+- [X] T045 [US2] Extend `LookupResolver` with forms, the rule fallback, notes (relation → wording: "plural of", "past tense of", "past participle of", "present participle of", "third-person singular of", "comparative of", "superlative of", "form of"), capitalisation ordering and hyphen parts; make T041 pass
+- [X] T046 [US2] Show notes and multiple entry sections in lib/features/reader/ui/lookup_panel.dart; make T043 pass; run T042 against the full dictionary and record the result in quickstart.md
 
 **Checkpoint**: Inflected words resolve correctly; SC-003 measured.
 
@@ -263,19 +263,19 @@ the web store and the interaction lock.
 
 ### Tests for User Story 3 (write first, confirm they fail) ⚠️
 
-- [ ] T047 [P] [US3] Widget-test dictionary readiness in test/widget/lookup_dictionary_status_test.dart (fake store):
+- [X] T047 [P] [US3] Widget-test dictionary readiness in test/widget/lookup_dictionary_status_test.dart (fake store):
   - **web**: `downloading` shows "Downloading the dictionary… 42%", then the definition on `ready`;
   - **web**: `failed(offline)` shows "The dictionary needs an internet connection once to download.";
   - **web**: a later lookup retries;
   - **mobile**: `unpacking` shows "Preparing the dictionary…", then the result.
-- [ ] T048 [P] [US3] Extend test/unit/no_network_test.dart: with HTTP forbidden, look up words via `LookupController` over the sample dictionary (exact, inflected, not found), record history, and toggle tap-to-define. Expect no HTTP attempts, and `OnlineDictionary` is never called (FR-032)
-- [ ] T049 [P] [US3] Write test/eval/coverage_eval_test.dart and test/fixtures/dictionary/prose_1000.txt (1,000 word tokens from public-domain Project Gutenberg prose, names, numbers and symbols removed, with the source cited in the file header). Each token runs through `WordExtractor` rules + `LookupResolver` on the full dictionary (skipped if absent); it reports the share with an entry and fails below 95% (SC-001)
+- [X] T048 [P] [US3] Extend test/unit/no_network_test.dart: with HTTP forbidden, look up words via `LookupController` over the sample dictionary (exact, inflected, not found), record history, and toggle tap-to-define. Expect no HTTP attempts, and `OnlineDictionary` is never called (FR-032)
+- [X] T049 [P] [US3] Write test/eval/coverage_eval_test.dart and test/fixtures/dictionary/prose_1000.txt (1,000 word tokens from public-domain Project Gutenberg prose, names, numbers and symbols removed, with the source cited in the file header). Each token runs through `WordExtractor` rules + `LookupResolver` on the full dictionary (skipped if absent); it reports the share with an entry and fails below 95% (SC-001)
 - [ ] T050 [P] [US3] Write integration_test/lookup_timing_test.dart (profile, `flutter drive --no-dds`, as reader_perf_test.dart). Import lookup_prose.pdf and text_500.pdf, then long-press 20 words on different pages, half on pages whose text isn't cached yet. Measure from the long-press recognised to the panel's first frame showing the entry; report p50 and p95 through `test_driver/perf_driver.dart`. p95 ≤ 300 ms is the target (SC-002, research R8)
 
 ### Implementation for User Story 3
 
-- [ ] T051 [US3] Show the store states in lib/features/reader/ui/lookup_panel.dart (progress, offline message, preparing); make T047 pass
-- [ ] T052 [US3] Start the mobile unpack at app start through lib/core/dictionary/dictionary_warmup.dart: `startDictionaryUnpack()` by conditional import, which starts the io store's `ensureStarted` after the first frame (dictionary_warmup_io.dart) and does nothing on the web, so the web first-load bundle doesn't gain the store (analysis F3). lib/app.dart only calls `startDictionaryUnpack()`; the web stays on book open. In lib/features/reader/ui/reader_screen.dart, prefetch the visible pages' text into `PageTextCache` when the view settles (idle, after position changes stop for 300 ms)
+- [X] T051 [US3] Show the store states in lib/features/reader/ui/lookup_panel.dart (progress, offline message, preparing); make T047 pass
+- [X] T052 [US3] Start the mobile unpack at app start through lib/core/dictionary/dictionary_warmup.dart: `startDictionaryUnpack()` by conditional import, which starts the io store's `ensureStarted` after the first frame (dictionary_warmup_io.dart) and does nothing on the web, so the web first-load bundle doesn't gain the store (analysis F3). lib/app.dart only calls `startDictionaryUnpack()`; the web stays on book open. In lib/features/reader/ui/reader_screen.dart, prefetch the visible pages' text into `PageTextCache` when the view settles (idle, after position changes stop for 300 ms)
 - [ ] T053 [US3] Run T050 on the S24 and T049 against the full dictionary; record both in specs/003-dictionary-lookup/quickstart.md "Measurements". If p95 > 300 ms, profile and fix by the R8 breakdown before continuing (Principle V)
 
 **Checkpoint**: P1 complete: a releasable offline lookup. Quickstart 1–12 and 22–25 pass on the S24 and in Chrome.

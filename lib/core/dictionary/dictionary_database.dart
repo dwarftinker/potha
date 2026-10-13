@@ -60,7 +60,9 @@ class DictionaryDatabase extends GeneratedDatabase implements Lexicon {
   @override
   Future<List<WordFormLink>> formsOf(String key) async {
     final rows = await customSelect(
-      'SELECT base_key, relation FROM forms WHERE form_key = ?',
+      // The most common base first ("went": go before Scots "gan").
+      'SELECT base_key, relation FROM forms WHERE form_key = ? '
+      'ORDER BY (SELECT MIN(rank) FROM entries WHERE key = base_key), base_key',
       variables: [Variable.withString(key)],
     ).get();
     return [

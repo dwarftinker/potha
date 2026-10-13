@@ -100,6 +100,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _barsSettling = false;
   Timer? _barsSettle;
   PointerDeviceKind? _lastPointerKind;
+
+  /// Loads the visible pages' text once the view has been still for 300 ms, so a
+  /// long-press rarely waits for extraction (research R4, R8).
+  Timer? _prefetch;
   late final AppLifecycleListener _lifecycle;
 
   // Read once: the saver still writes while the screen is being disposed.
@@ -222,6 +226,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       // The web downloads the dictionary on the first book open (FR-022); on mobile the
       // unpack has usually finished by now.
       store.ensureStarted();
+      _schedulePrefetch();
     } on DocumentOpenException catch (e) {
       _fail(
         e.kind == DocumentOpenFailure.passwordCancelled
@@ -241,6 +246,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void dispose() {
     _lifecycle.dispose();
     _barsSettle?.cancel();
+    _prefetch?.cancel();
     _keepAwake.disable();
     _jumpBack.dispose();
     _search?.dispose();
@@ -263,6 +269,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final pageChanged = position.page != _position.page;
     _position = position;
     _saver?.positionChanged(position);
+    _schedulePrefetch();
     // A page turn closes the panel (FR-004).
     if (pageChanged && (_lookup?.state.isOpen ?? false)) _lookup!.close();
     if (pageChanged && mounted) {
@@ -275,6 +282,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         Directionality.of(context),
       );
     }
+  }
+
+  void _schedulePrefetch() {
+    _prefetch?.cancel();
+    _prefetch = Timer(const Duration(milliseconds: 300), () {
+      final doc = _doc;
+      if (doc == null || !mounted) return;
+      final page = _position.page;
+      _pageText?.prefetch([page, if (page < doc.pageCount) page + 1]);
+    });
   }
 
   void _loadLinksNear(int page) {

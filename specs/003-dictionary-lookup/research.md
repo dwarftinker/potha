@@ -180,6 +180,11 @@ pinned to a release at least two weeks old.
      section (FR-009).
   7. Phrases: the phrase key first; if it has no entry, the first word's result under
      "No entry for "…"" (FR-019).
+  **Measured (T042)**: with bases in the file's key order, SC-003 was 89.5% (dialect and
+  abbreviation links such as "went → gan", "felt → FELT" came first). Two changes give
+  99.5%: bases are ordered by frequency rank when queried, and the build drops form
+  links tagged obsolete, archaic, dialectal, nonstandard, rare, misspelling, slang,
+  abbreviation and similar.
 - **Rationale**: Wiktionary's own form data covers irregular forms ("mice", "better",
   "went"). The small rule set covers regular forms missing from the trimmed data. Both
   are tested against SC-003's 200-word list.

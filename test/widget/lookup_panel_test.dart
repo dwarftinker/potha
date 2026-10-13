@@ -234,4 +234,20 @@ void main() {
     expect(store.startCalls, greaterThan(0));
     await closeReader(tester, app);
   });
+
+  testWidgets('the visible pages\' text is loaded once the view is still (research R4)',
+      (tester) async {
+    final (app, view) = await open(tester);
+    expect(doc.textRequests, containsAll([1, 2]));
+    doc.textRequests.clear();
+    // Moving quickly: nothing is loaded until the view has been still for 300 ms.
+    view.controller.emitPosition(const ReadingPosition(3, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    view.controller.emitPosition(const ReadingPosition(4, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(doc.textRequests, isEmpty);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(doc.textRequests, [4, 5]);
+    await closeReader(tester, app);
+  });
 }
