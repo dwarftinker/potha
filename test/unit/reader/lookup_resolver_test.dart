@@ -170,4 +170,39 @@ void main() {
       expect(r.found, isFalse);
     });
   });
+
+  group('phrases (US5)', () {
+    final lexicon = MapLexicon({
+      'give up': [e('give up', 'verb', 'To stop trying.')],
+      'in spite of': [e('in spite of', 'prep', 'Despite.')],
+      'give': [e('give', 'verb', 'To hand over.')],
+    });
+    final resolver = LookupResolver(lexicon);
+
+    LookupQuery phrase(String key, String first) => LookupQuery(
+      candidates: [key],
+      display: key,
+      isPhrase: true,
+      firstWord: LookupQuery(candidates: [first], display: first),
+    );
+
+    test('a phrase with an entry shows it', () async {
+      final r = await resolver.resolve(phrase('give up', 'give'));
+      expect(r.sections.single.entry.headword, 'give up');
+      expect(r.phraseNotFound, isNull);
+      expect((await resolver.resolve(phrase('in spite of', 'in'))).headword, 'in spite of');
+    });
+
+    test('an unknown phrase shows the first word under "phraseNotFound" (FR-019)', () async {
+      final r = await resolver.resolve(phrase('give over there', 'give'));
+      expect(r.phraseNotFound, 'give over there');
+      expect(r.sections.single.entry.headword, 'give');
+    });
+
+    test('an unknown phrase whose first word is unknown too is not found', () async {
+      final r = await resolver.resolve(phrase('zorb blax', 'zorb'));
+      expect(r.found, isFalse);
+      expect(r.phraseNotFound, 'zorb blax');
+    });
+  });
 }

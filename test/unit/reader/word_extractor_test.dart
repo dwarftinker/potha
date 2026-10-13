@@ -175,4 +175,71 @@ void main() {
       expect(queryAt(page(['give up now']), 'give')!.isPhrase, isFalse);
     });
   });
+
+  group('extendTo (US5)', () {
+    final text = page([
+      'They would not give up, in spite of the',
+      'rain; an exam\u0002ple of will.',
+    ]);
+    WordSelection word(String w) => extractor.wordAt(text, text.text.indexOf(w))!;
+    int inside(String w, [int n = 1]) => text.text.indexOf(w) + n;
+
+    test('grows forward and backward to whole words', () {
+      final give = word('give');
+      expect(extractor.extendTo(text, give, inside('up')).text, 'give up');
+      expect(extractor.extendTo(text, give, inside('not')).text, 'not give');
+      expect(extractor.extendTo(text, give, inside('would', 3)).text, 'would not give');
+    });
+
+    test('shrinks back to the anchor word', () {
+      final give = word('give');
+      final grown = extractor.extendTo(text, give, inside('spite'));
+      expect(grown.text, 'give up, in spite');
+      expect(extractor.extendTo(text, give, inside('give', 2)), give);
+    });
+
+    test('white space snaps to the word before (forward) or after (backward)', () {
+      final give = word('give');
+      final space = text.text.indexOf(' in spite');
+      expect(extractor.extendTo(text, give, space).text, 'give up');
+      final before = text.text.indexOf(' give');
+      expect(extractor.extendTo(text, give, before).text, 'give');
+    });
+
+    test('a line break gives single spaces; a line-break hyphen is joined', () {
+      final spite = word('spite');
+      final phrase = extractor.extendTo(text, spite, inside('rain'));
+      final q = extractor.queryFor(text, phrase);
+      expect(q.isPhrase, isTrue);
+      expect(q.candidates, ['spite of the rain']);
+      final an = word('an');
+      final q2 = extractor.queryFor(text, extractor.extendTo(text, an, inside('ple')));
+      expect(q2.candidates.first, 'an example');
+    });
+
+    test('a phrase query keeps the first word for the fallback (FR-019)', () {
+      final q = extractor.queryFor(text, extractor.extendTo(text, word('in'), inside('of')));
+      expect(q.candidates, ['in spite of']);
+      expect(q.display, 'in spite of');
+      expect(q.firstWord!.candidates, ['in']);
+    });
+
+    test('punctuation at the ends of a phrase is dropped', () {
+      final q = extractor.queryFor(text, extractor.extendTo(text, word('give'), inside('up')));
+      expect(q.candidates, ['give up']);
+    });
+
+    test('the selection stops at the end of the page', () {
+      final will = word('will');
+      final s = extractor.extendTo(text, will, text.text.length + 50);
+      expect(s.text, 'will');
+    });
+
+    test('more than 8 words: not a phrase, the first word is looked up', () {
+      final s = extractor.extendTo(text, word('They'), inside('rain'));
+      final q = extractor.queryFor(text, s);
+      expect(q.isPhrase, isFalse);
+      expect(q.candidates, ['they']);
+    });
+  });
 }

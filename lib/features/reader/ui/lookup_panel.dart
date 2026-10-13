@@ -227,7 +227,10 @@ class _Content extends StatelessWidget {
     final body = switch (state) {
       LookupShown(:final result) => _entries(context, result, muted),
       LookupNotFound(:final result) => [
-        Text('No definition found for “${_visible(result.query.display)}”', style: text.bodyLarge),
+        Text(
+          'No definition found for “${_visible(result.phraseNotFound ?? result.query.display)}”',
+          style: text.bodyLarge,
+        ),
       ],
       LookupPreparing(:final status) => _preparing(context, status),
       LookupLoading() => [const _Waiting()],
@@ -248,7 +251,16 @@ class _Content extends StatelessWidget {
   List<Widget> _entries(BuildContext context, LookupResult result, Color muted) {
     final text = Theme.of(context).textTheme;
     final first = result.sections.first.entry.headword;
-    final out = <Widget>[];
+    final out = <Widget>[
+      if (result.phraseNotFound != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 2),
+          child: Text(
+            'No entry for “${result.phraseNotFound}”',
+            style: text.bodyMedium?.copyWith(color: muted),
+          ),
+        ),
+    ];
     for (final section in result.sections) {
       final e = section.entry;
       if (section.note != null) {

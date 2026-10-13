@@ -315,14 +315,14 @@ the web store and the interaction lock.
 
 ### Tests for User Story 5 (write first, confirm they fail) ⚠️
 
-- [ ] T059 [P] [US5] Unit-test `WordExtractor.extendTo` in test/unit/reader/word_extractor_test.dart:
+- [X] T059 [P] [US5] Unit-test `WordExtractor.extendTo` in test/unit/reader/word_extractor_test.dart:
   - growing and shrinking snaps to word boundaries in both directions;
   - a line break between words gives single spaces;
   - a line-break hyphen inside the phrase is joined;
   - the selection stops at the page end;
   - more than 8 words gives `isPhrase` false, so the first word is looked up.
-- [ ] T060 [P] [US5] Extend test/unit/reader/lookup_resolver_test.dart: "give up" → the phrase entry; "in spite of" → the phrase entry; an unknown phrase → the first word's result with `phraseNotFound` (FR-019)
-- [ ] T061 [P] [US5] Widget-test in test/widget/lookup_phrase_test.dart:
+- [X] T060 [P] [US5] Extend test/unit/reader/lookup_resolver_test.dart: "give up" → the phrase entry; "in spite of" → the phrase entry; an unknown phrase → the first word's result with `phraseNotFound` (FR-019)
+- [X] T061 [P] [US5] Widget-test in test/widget/lookup_phrase_test.dart:
   - long-press "give" then drag to "up" → highlight grows, and the panel shows "give up" after lift;
   - dragging the end handle to "of" in "in spite of" → the phrase entry;
   - a made-up phrase → the "No entry for "…"" note with the first word's entry;
@@ -330,9 +330,9 @@ the web store and the interaction lock.
 
 ### Implementation for User Story 5
 
-- [ ] T062 [US5] Implement `extendTo` and phrase queries in lib/features/reader/domain/word_extractor.dart, and phrase handling in lookup_resolver.dart; make T059 and T060 pass
-- [ ] T063 [P] [US5] Create lib/features/reader/ui/selection_handles.dart. Handles are positioned with `pageRectToGlobal`; dragging uses a `Listener`, sets the interaction lock, and maps pointer positions with `pagePointAt` + `hitTest`
-- [ ] T064 [US5] Wire long-press drag (`onLongPressMove` / `onLongPressEnd`), mouse drag from the selection, and the handles into lib/features/reader/ui/reader_screen.dart and `LookupController.extendSelection` / `endExtend`. Show the phrase note in lookup_panel.dart; make T061 pass
+- [X] T062 [US5] Implement `extendTo` and phrase queries in lib/features/reader/domain/word_extractor.dart, and phrase handling in lookup_resolver.dart; make T059 and T060 pass
+- [X] T063 [P] [US5] Create lib/features/reader/ui/selection_handles.dart. Handles are positioned with `pageRectToGlobal`; dragging uses a `Listener`, sets the interaction lock, and maps pointer positions with `pagePointAt` + `hitTest`
+- [X] T064 [US5] Wire long-press drag (`onLongPressMove` / `onLongPressEnd`), mouse drag from the selection, and the handles into lib/features/reader/ui/reader_screen.dart and `LookupController.extendSelection` / `endExtend`. Show the phrase note in lookup_panel.dart; make T061 pass
 
 **Checkpoint**: Phrases can be selected and looked up on touch and with a mouse.
 

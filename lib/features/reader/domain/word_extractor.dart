@@ -57,6 +57,7 @@ class LookupQuery {
     this.capitalisedMidSentence = false,
     this.isPhrase = false,
     this.garbled = false,
+    this.firstWord,
   });
 
   /// Lookup keys to try in order: the joined line-break word before the hyphenated one.
@@ -74,6 +75,9 @@ class LookupQuery {
 
   /// The text isn't readable (broken fonts, FR-029); nothing is looked up.
   final bool garbled;
+
+  /// For a phrase: the first word's query, shown if the phrase has no entry (FR-019).
+  final LookupQuery? firstWord;
 
   @override
   String toString() =>
@@ -143,11 +147,32 @@ class WordExtractor {
     return _selection(text, page, start, end);
   }
 
+  /// Phrases longer than this look up their first word (spec edge cases).
+  static const maxPhraseWords = 8;
+
+  /// The selection grown or shrunk to whole words between [anchor] (the word first
+  /// selected) and the character at [index] (FR-018). It stays on [anchor]'s page.
+  WordSelection extendTo(PageText text, WordSelection anchor, int index) {
+    final s = text.text;
+    if (s.isEmpty) return anchor;
+    final i = index.clamp(0, s.length - 1);
+    if (i >= anchor.start && i < anchor.end) return anchor;
+    if (i >= anchor.end) {
+      final at = _wordCharAtOrBefore(s, i, anchor.end);
+      if (at == null) return anchor;
+      return _selection(text, anchor.page, anchor.start, _coreAround(s, at).$2);
+    }
+    final at = _wordCharAtOrAfter(s, i, anchor.start);
+    if (at == null) return anchor;
+    return _selection(text, anchor.page, _coreAround(s, at).$1, anchor.end);
+  }
+
   LookupQuery queryFor(PageText text, WordSelection selection) {
     final raw = text.text.substring(selection.start, selection.end);
     if (_isGarbled(raw)) {
       return LookupQuery(candidates: const [], display: raw, garbled: true);
     }
+    if (_isMultiWord(raw)) return _phraseQuery(text, selection, raw);
     // Normalise line-break hyphens to one marker, and drop soft hyphens.
     var word = raw
         .replaceAll(RegExp('-(\r\n|\r|\n)'), '\u0002')
@@ -180,6 +205,28 @@ class WordExtractor {
     );
   }
 
+  LookupQuery _phraseQuery(PageText text, WordSelection selection, String raw) {
+    final firstEnd = _coreAround(text.text, selection.start).$2;
+    final first = queryFor(text, _selection(text, selection.page, selection.start, firstEnd));
+    final joined = raw
+        .replaceAll(RegExp('-(\r\n|\r|\n)'), '\u0002')
+        .replaceAll(String.fromCharCode(_softHyphen), '')
+        .replaceAll(RegExp(r'[\s]+'), ' ')
+        .replaceAll(RegExp('[,;:!?"“”()\\[\\]]'), '')
+        .trim();
+    final words = joined.split(' ');
+    if (words.length > maxPhraseWords) return first;
+    final surfaces = joined.contains('\u0002')
+        ? [joined.replaceAll('\u0002', ''), joined.replaceAll('\u0002', '-')]
+        : [joined];
+    return LookupQuery(
+      candidates: [for (final c in surfaces) lookupKey(c)],
+      display: surfaces.first,
+      isPhrase: true,
+      firstWord: first,
+    );
+  }
+
   WordSelection _selection(PageText text, int page, int start, int end) => WordSelection(
     page: page,
     start: start,
@@ -187,6 +234,43 @@ class WordExtractor {
     text: _shown(text.text.substring(start, end)),
     rects: _lineRects(text, start, end),
   );
+}
+
+/// The word core (letters, digits and inner joiners) around the word character [at].
+(int, int) _coreAround(String s, int at) {
+  final (tokenStart, tokenEnd) = _token(s, at);
+  var start = at, end = at + 1;
+  while (start > tokenStart) {
+    final j = _joinedBefore(s, start, tokenStart);
+    if (j == null) break;
+    start = j;
+  }
+  while (end < tokenEnd) {
+    final j = _joinedAfter(s, end, tokenEnd);
+    if (j == null) break;
+    end = j;
+  }
+  return (start, end);
+}
+
+int? _wordCharAtOrBefore(String s, int i, int min) {
+  for (var j = i; j >= min; j--) {
+    if (_isWordChar(s.codeUnitAt(j))) return j;
+  }
+  return null;
+}
+
+int? _wordCharAtOrAfter(String s, int i, int max) {
+  for (var j = i; j < max; j++) {
+    if (_isWordChar(s.codeUnitAt(j))) return j;
+  }
+  return null;
+}
+
+/// More than one word: white space between word characters (not a line-break hyphen).
+bool _isMultiWord(String raw) {
+  final normalised = raw.replaceAll(RegExp('-(\r\n|\r|\n)'), '');
+  return RegExp(r'\S\s+\S').hasMatch(normalised.trim());
 }
 
 /// The run of non-space characters around [index]. A hyphen followed by a line break

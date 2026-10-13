@@ -72,6 +72,7 @@ class LookupResolver {
 
   Future<LookupResult> resolve(LookupQuery query) async {
     if (query.garbled) return LookupResult(query);
+    if (query.isPhrase) return _phrase(query);
     for (final key in query.candidates) {
       final sections = await _word(key, query.display, query.capitalisedMidSentence);
       if (sections.isNotEmpty) return LookupResult(query, sections: sections);
@@ -84,6 +85,24 @@ class LookupResolver {
       if (sections.isNotEmpty) return LookupResult(query, sections: sections);
     }
     return LookupResult(query);
+  }
+
+  /// A phrase: its entry ("give up"); if it has none, the first word's result under
+  /// "No entry for …" (FR-019).
+  Future<LookupResult> _phrase(LookupQuery query) async {
+    for (final key in query.candidates) {
+      final entries = await _lexicon.entries(key);
+      if (entries.isNotEmpty) {
+        return LookupResult(query, sections: [for (final e in entries) ResultSection(e)]);
+      }
+    }
+    final first = query.firstWord;
+    final fallback = first == null ? null : await resolve(first);
+    return LookupResult(
+      query,
+      sections: fallback?.sections ?? const [],
+      phraseNotFound: query.display,
+    );
   }
 
   /// Sections for one key: its own entries, then its bases'.

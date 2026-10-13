@@ -38,6 +38,7 @@ import 'lookup_panel.dart';
 import 'reader_bars.dart';
 import 'reader_shortcuts.dart';
 import 'search_panel.dart';
+import 'selection_handles.dart';
 import 'settings_sheet.dart';
 import 'tap_to_define_chip.dart';
 import 'tap_detector.dart';
@@ -358,6 +359,35 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _lookup?.lookUpAt(point);
   }
 
+  bool _mouseDragging = false;
+
+  /// With a mouse, pressing on the selection and dragging extends it (FR-018).
+  void _maybeStartMouseDrag(PointerDownEvent e) {
+    final selection = _lookup?.selection;
+    final view = _view;
+    if (e.kind != PointerDeviceKind.mouse || selection == null || view == null) return;
+    final onSelection = selection.rects.any(
+      (r) => view.pageRectToGlobal(selection.page, r)?.inflate(2).contains(e.position) ?? false,
+    );
+    if (!onSelection) return;
+    _mouseDragging = true;
+    view.setInteractionLocked(true);
+    _lookup!.beginHandleDrag(start: false);
+  }
+
+  void _endMouseDrag() {
+    if (!_mouseDragging) return;
+    _mouseDragging = false;
+    _view?.setInteractionLocked(false);
+    _lookup?.endExtend();
+  }
+
+  /// Long-press drag, handle drag or mouse drag: grow the selection to [global].
+  void _extendTo(Offset global) {
+    final point = _view!.pagePointAt(global);
+    if (point != null) _lookup?.extendTo(point);
+  }
+
   void _lookupChanged() {
     final state = _lookup!.state;
     if (state is LookupNoText) {
@@ -636,12 +666,24 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                         },
                         child: LayoutBuilder(
                           builder: (context, constraints) => Listener(
-                            onPointerDown: (e) => _lastPointerKind = e.kind,
+                            onPointerDown: (e) {
+                              _lastPointerKind = e.kind;
+                              _maybeStartMouseDrag(e);
+                            },
+                            onPointerMove: (e) {
+                              if (_mouseDragging) _extendTo(e.position);
+                            },
+                            onPointerUp: (_) => _endMouseDrag(),
+                            onPointerCancel: (_) => _endMouseDrag(),
                             child: TapDetector(
                               movement: view,
                               onTap: (global, local) => _onTap(global, local, constraints.maxWidth),
                               onLongPress: (global, _) => _lookUpAt(global, lock: true),
-                              onLongPressEnd: () => view.setInteractionLocked(false),
+                              onLongPressMove: _extendTo,
+                              onLongPressEnd: () {
+                                view.setInteractionLocked(false);
+                                _lookup?.endExtend();
+                              },
                               onDoubleClick: (global, _) => _lookUpAt(global),
                               child: _factory!.build(doc, controller: view, config: _config()),
                             ),
@@ -774,6 +816,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                           onTurnOff: () => _repo.setTapToDefine(false),
                         ),
                       ),
+                    if (lookup.isOpen) ..._handles(view),
                     if (lookup.isOpen) _panel(context, lookup),
                   ],
                 ),
@@ -783,6 +826,34 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         ),
       ),
     );
+  }
+
+  /// Handles under the first and last character of the selection (FR-018).
+  List<Widget> _handles(DocumentViewController view) {
+    final selection = _lookup?.selection;
+    if (selection == null || selection.rects.isEmpty) return const [];
+    final first = view.pageRectToGlobal(selection.page, selection.rects.first);
+    final last = view.pageRectToGlobal(selection.page, selection.rects.last);
+    if (first == null || last == null) return const [];
+    final color = _theme.selection.withValues(alpha: 1);
+    Widget handle(Offset at, {required bool start}) => Positioned(
+      left: at.dx - handleSize / 2,
+      top: at.dy,
+      child: SelectionHandle(
+        start: start,
+        color: color,
+        onDragStart: () {
+          view.setInteractionLocked(true);
+          _lookup?.beginHandleDrag(start: start);
+        },
+        onDrag: _extendTo,
+        onDragEnd: () {
+          view.setInteractionLocked(false);
+          _lookup?.endExtend();
+        },
+      ),
+    );
+    return [handle(first.bottomLeft, start: true), handle(last.bottomRight, start: false)];
   }
 
   Widget _panel(BuildContext context, LookupState state) {
