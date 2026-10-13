@@ -4,23 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/core/document/document_format.dart';
 import 'package:potha/core/document/pdf/pdf_document_format.dart';
-import 'package:potha/features/reader/basic_page_view.dart';
+import 'package:potha/features/reader/ui/reader_screen.dart';
 
+import 'reader_test_app.dart';
 import 'test_app.dart';
-
-class _Doc implements ReaderDocument {
-  _Doc(this.usedPassword);
-  @override
-  final String? usedPassword;
-  @override
-  int get pageCount => 5;
-  @override
-  Future<DocumentMetadata> readMetadata() async => DocumentMetadata.empty;
-  @override
-  Future<Uint8List?> renderPagePng(int pageNumber, {required int width}) async => null;
-  @override
-  Future<void> close() async {}
-}
 
 /// Opens only with "secret", trying the known password first like pdfrx does.
 class _LockedFormat implements DocumentFormat {
@@ -32,23 +19,16 @@ class _LockedFormat implements DocumentFormat {
   @override
   Future<ReaderDocument> open(BookFileRef file,
       {String? knownPassword, AskPassword? askPassword}) async {
-    if (knownPassword == 'secret') return _Doc('secret');
+    if (knownPassword == 'secret') return FakeReaderDocument(pageCount: 5, usedPassword: 'secret');
     var retry = false;
     while (true) {
       asked++;
       final given = await askPassword!(retry: retry);
       if (given == null) throw const DocumentOpenException(DocumentOpenFailure.passwordCancelled);
-      if (given == 'secret') return _Doc(given);
+      if (given == 'secret') return FakeReaderDocument(pageCount: 5, usedPassword: given);
       retry = true;
     }
   }
-}
-
-class _View implements DocumentViewFactory {
-  @override
-  Widget build(ReaderDocument doc,
-          {required int initialPage, required ValueChanged<int> onPageChanged}) =>
-      Text('Showing page $initialPage');
 }
 
 void main() {
@@ -56,14 +36,14 @@ void main() {
     final format = _LockedFormat();
     final app = TestApp(passwordStore: MemoryPasswordStore(saved), overrides: [
       documentFormatsProvider.overrideWithValue([format]),
-      documentViewFactoriesProvider.overrideWithValue({'pdf': _View()}),
+      documentViewFactoriesProvider.overrideWithValue({'pdf': FakeViewFactory()}),
     ]);
     await app.pump(tester);
     await seedBook(tester, app.db, id: 'locked', title: 'Locked book');
     await tester.runAsync(() => app.db.customStatement(
         "UPDATE books SET is_password_protected = 1 WHERE id = 'locked'"));
     final navigator = tester.state<NavigatorState>(find.byType(Navigator));
-    navigator.push(MaterialPageRoute<void>(builder: (_) => const BasicPageView(bookId: 'locked')));
+    navigator.push(MaterialPageRoute<void>(builder: (_) => const ReaderScreen(bookId: 'locked')));
     await settleReal(tester);
     // Not pumpAndSettle: the "Opening book" spinner animates behind the dialog.
     await tester.pump(const Duration(milliseconds: 500));
@@ -76,8 +56,7 @@ void main() {
 
     expect(format.asked, 0);
     expect(find.text('Password needed'), findsNothing);
-    expect(find.text('Showing page 1'), findsOneWidget);
-    expect(find.text('Page 1 of 5'), findsOneWidget);
+    expect(find.textContaining('View page 1'), findsOneWidget);
 
     // Opening alone records the starting page (no longer "New").
     await tester.pump(const Duration(seconds: 1));
@@ -99,7 +78,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await settleReal(tester);
 
-    expect(find.text('Showing page 1'), findsOneWidget);
+    expect(find.textContaining('View page 1'), findsOneWidget);
     expect(saved['locked'], 'secret');
 
     await app.dispose(tester);

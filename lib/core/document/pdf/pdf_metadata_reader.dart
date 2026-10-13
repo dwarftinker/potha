@@ -80,14 +80,9 @@ class _Stream {
 }
 
 class _XrefEntry {
-  const _XrefEntry.offset(this.offset)
-      : streamNumber = null,
-        index = null;
+  const _XrefEntry.offset(this.offset) : streamNumber = null, index = null;
   const _XrefEntry.compressed(int this.streamNumber, int this.index) : offset = null;
-  const _XrefEntry.free()
-      : offset = null,
-        streamNumber = null,
-        index = null;
+  const _XrefEntry.free() : offset = null, streamNumber = null, index = null;
 
   final int? offset;
   final int? streamNumber;
@@ -104,8 +99,16 @@ class _PdfFormatException implements Exception {
 
 bool _isWhite(int c) => c == 0 || c == 9 || c == 10 || c == 12 || c == 13 || c == 32;
 bool _isDelimiter(int c) =>
-    c == 0x28 || c == 0x29 || c == 0x3C || c == 0x3E || c == 0x5B || c == 0x5D ||
-    c == 0x7B || c == 0x7D || c == 0x2F || c == 0x25;
+    c == 0x28 ||
+    c == 0x29 ||
+    c == 0x3C ||
+    c == 0x3E ||
+    c == 0x5B ||
+    c == 0x5D ||
+    c == 0x7B ||
+    c == 0x7D ||
+    c == 0x2F ||
+    c == 0x25;
 
 class _Parser {
   _Parser(this.bytes, [this.pos = 0]);
@@ -218,10 +221,10 @@ class _Parser {
     if (!atEnd && bytes[pos] >= 0x30 && bytes[pos] <= 0x39) {
       final gen = _parseNumber();
       skipWhite();
-      if (gen is int && !atEnd && bytes[pos] == 0x52 /* R */ &&
-          (pos + 1 >= bytes.length ||
-              _isWhite(bytes[pos + 1]) ||
-              _isDelimiter(bytes[pos + 1]))) {
+      if (gen is int &&
+          !atEnd &&
+          bytes[pos] == 0x52 /* R */ &&
+          (pos + 1 >= bytes.length || _isWhite(bytes[pos + 1]) || _isDelimiter(bytes[pos + 1]))) {
         pos++;
         return _Ref(first);
       }
@@ -240,9 +243,11 @@ class _Parser {
     pos++;
     var hex = digits.toString();
     if (hex.length.isOdd) hex += '0';
-    return _PdfString(Uint8List.fromList([
-      for (var i = 0; i < hex.length; i += 2) int.parse(hex.substring(i, i + 2), radix: 16),
-    ]));
+    return _PdfString(
+      Uint8List.fromList([
+        for (var i = 0; i < hex.length; i += 2) int.parse(hex.substring(i, i + 2), radix: 16),
+      ]),
+    );
   }
 
   _PdfString _parseLiteralString() {
@@ -297,7 +302,9 @@ class _Parser {
   }
 
   static String _decodeName(String raw) => raw.replaceAllMapped(
-      RegExp(r'#([0-9A-Fa-f]{2})'), (m) => String.fromCharCode(int.parse(m[1]!, radix: 16)));
+    RegExp(r'#([0-9A-Fa-f]{2})'),
+    (m) => String.fromCharCode(int.parse(m[1]!, radix: 16)),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -389,8 +396,10 @@ class _Reader {
           final off = p.parse() as int;
           p.parse(); // generation
           final kind = p.parse() as _Keyword;
-          _entries.putIfAbsent(start + i,
-              () => kind.value == 'n' ? _XrefEntry.offset(off) : const _XrefEntry.free());
+          _entries.putIfAbsent(
+            start + i,
+            () => kind.value == 'n' ? _XrefEntry.offset(off) : const _XrefEntry.free(),
+          );
         }
       }
       final hybrid = trailer['XRefStm'];
@@ -465,8 +474,9 @@ class _Reader {
       if (entry?.offset != null) {
         value = _parseIndirect(entry!.offset!);
       } else if (entry?.streamNumber != null) {
-        final objects = _objectStreams[entry!.streamNumber!] ??=
-            _readObjectStream(entry.streamNumber!);
+        final objects = _objectStreams[entry!.streamNumber!] ??= _readObjectStream(
+          entry.streamNumber!,
+        );
         value = entry.index! < objects.length ? objects[entry.index!] : null;
       }
       return _objectCache[number] = value;
@@ -550,7 +560,11 @@ class _Reader {
     final rowLength = (columns * colors * bits / 8).ceil();
     final out = BytesBuilder(copy: false);
     var previous = Uint8List(rowLength);
-    for (var pos = 0; pos + rowLength < data.length + 1 && pos < data.length; pos += rowLength + 1) {
+    for (
+      var pos = 0;
+      pos + rowLength < data.length + 1 && pos < data.length;
+      pos += rowLength + 1
+    ) {
       final type = data[pos];
       final row = Uint8List(rowLength);
       for (var i = 0; i < rowLength && pos + 1 + i < data.length; i++) {
@@ -558,14 +572,16 @@ class _Reader {
         final left = i >= bpp ? row[i - bpp] : 0;
         final up = previous[i];
         final upLeft = i >= bpp ? previous[i - bpp] : 0;
-        row[i] = switch (type) {
-          0 => raw,
-          1 => raw + left,
-          2 => raw + up,
-          3 => raw + ((left + up) >> 1),
-          4 => raw + _paeth(left, up, upLeft),
-          _ => throw const _PdfFormatException('Bad PNG filter'),
-        } & 0xFF;
+        row[i] =
+            switch (type) {
+              0 => raw,
+              1 => raw + left,
+              2 => raw + up,
+              3 => raw + ((left + up) >> 1),
+              4 => raw + _paeth(left, up, upLeft),
+              _ => throw const _PdfFormatException('Bad PNG filter'),
+            } &
+            0xFF;
       }
       out.add(row);
       previous = row;
@@ -590,9 +606,7 @@ class _Reader {
 
   static String _decodeText(Uint8List b) {
     if (b.length >= 2 && b[0] == 0xFE && b[1] == 0xFF) {
-      final units = <int>[
-        for (var i = 2; i + 1 < b.length; i += 2) (b[i] << 8) | b[i + 1],
-      ];
+      final units = <int>[for (var i = 2; i + 1 < b.length; i += 2) (b[i] << 8) | b[i + 1]];
       return String.fromCharCodes(units);
     }
     if (b.length >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
@@ -603,13 +617,38 @@ class _Reader {
 
   /// PDFDocEncoding differs from Latin-1 in 0x80–0xA0.
   static const _pdfDocEncoding = {
-    0x80: 0x2022, 0x81: 0x2020, 0x82: 0x2021, 0x83: 0x2026, 0x84: 0x2014,
-    0x85: 0x2013, 0x86: 0x0192, 0x87: 0x2044, 0x88: 0x2039, 0x89: 0x203A,
-    0x8A: 0x2212, 0x8B: 0x2030, 0x8C: 0x201E, 0x8D: 0x201C, 0x8E: 0x201D,
-    0x8F: 0x2018, 0x90: 0x2019, 0x91: 0x201A, 0x92: 0x2122, 0x93: 0xFB01,
-    0x94: 0xFB02, 0x95: 0x0141, 0x96: 0x0152, 0x97: 0x0160, 0x98: 0x0178,
-    0x99: 0x017D, 0x9A: 0x0131, 0x9B: 0x0142, 0x9C: 0x0153, 0x9D: 0x0161,
-    0x9E: 0x017E, 0xA0: 0x20AC,
+    0x80: 0x2022,
+    0x81: 0x2020,
+    0x82: 0x2021,
+    0x83: 0x2026,
+    0x84: 0x2014,
+    0x85: 0x2013,
+    0x86: 0x0192,
+    0x87: 0x2044,
+    0x88: 0x2039,
+    0x89: 0x203A,
+    0x8A: 0x2212,
+    0x8B: 0x2030,
+    0x8C: 0x201E,
+    0x8D: 0x201C,
+    0x8E: 0x201D,
+    0x8F: 0x2018,
+    0x90: 0x2019,
+    0x91: 0x201A,
+    0x92: 0x2122,
+    0x93: 0xFB01,
+    0x94: 0xFB02,
+    0x95: 0x0141,
+    0x96: 0x0152,
+    0x97: 0x0160,
+    0x98: 0x0178,
+    0x99: 0x017D,
+    0x9A: 0x0131,
+    0x9B: 0x0142,
+    0x9C: 0x0153,
+    0x9D: 0x0161,
+    0x9E: 0x017E,
+    0xA0: 0x20AC,
   };
 
   // -- XMP ------------------------------------------------------------------
@@ -631,13 +670,11 @@ class _Reader {
     if (start < 0) return null;
     final end = _indexOf('</x:xmpmeta>', start, limit: start + (1 << 20));
     if (end < 0) return null;
-    return utf8.decode(bytes.range(start, end + '</x:xmpmeta>'.length),
-        allowMalformed: true);
+    return utf8.decode(bytes.range(start, end + '</x:xmpmeta>'.length), allowMalformed: true);
   }
 
   static String? _xmpField(String xmp, String field) {
-    final block =
-        RegExp('<dc:$field\\b[^>]*>(.*?)</dc:$field>', dotAll: true).firstMatch(xmp)?[1];
+    final block = RegExp('<dc:$field\\b[^>]*>(.*?)</dc:$field>', dotAll: true).firstMatch(xmp)?[1];
     if (block == null) return null;
     final items = [
       for (final m in RegExp(r'<rdf:li\b[^>]*>(.*?)</rdf:li>', dotAll: true).allMatches(block))
@@ -647,13 +684,13 @@ class _Reader {
     return text.isEmpty ? null : text;
   }
 
-  static String _xmlText(String raw) => raw
-      .replaceAll(RegExp(r'<[^>]*>'), '')
-      .replaceAllMapped(RegExp(r'&(#x[0-9A-Fa-f]+|#\d+|amp|lt|gt|quot|apos);'), (m) {
-        final e = m[1]!;
-        if (e.startsWith('#x')) return String.fromCharCode(int.parse(e.substring(2), radix: 16));
-        if (e.startsWith('#')) return String.fromCharCode(int.parse(e.substring(1)));
-        return const {'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'"}[e]!;
-      })
-      .trim();
+  static String _xmlText(String raw) => raw.replaceAll(RegExp(r'<[^>]*>'), '').replaceAllMapped(
+    RegExp(r'&(#x[0-9A-Fa-f]+|#\d+|amp|lt|gt|quot|apos);'),
+    (m) {
+      final e = m[1]!;
+      if (e.startsWith('#x')) return String.fromCharCode(int.parse(e.substring(2), radix: 16));
+      if (e.startsWith('#')) return String.fromCharCode(int.parse(e.substring(1)));
+      return const {'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'"}[e]!;
+    },
+  ).trim();
 }

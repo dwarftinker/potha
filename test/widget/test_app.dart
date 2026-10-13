@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/app.dart';
 import 'package:potha/core/db/app_database.dart';
 import 'package:potha/core/db/connection.dart';
+import 'package:potha/core/platform/keep_awake.dart';
 import 'package:potha/core/secure/password_store.dart';
 import 'package:potha/core/storage/book_file_store.dart';
 import 'package:potha/features/library/import/import_controller.dart';
@@ -81,6 +82,16 @@ class MemoryPasswordStore implements PasswordStore {
   Future<void> delete(String bookId) async => saved.remove(bookId);
 }
 
+/// Records keep-awake calls instead of touching the platform.
+class FakeKeepAwake implements KeepAwake {
+  final calls = <String>[];
+  bool get isOn => calls.isNotEmpty && calls.last == 'enable';
+  @override
+  Future<void> enable() async => calls.add('enable');
+  @override
+  Future<void> disable() async => calls.add('disable');
+}
+
 class TestApp {
   TestApp({
     ImportService? importService,
@@ -88,8 +99,10 @@ class TestApp {
     List<ImportSource> Function()? picked,
     BookFileStore? fileStore,
     PasswordStore? passwordStore,
+    FakeKeepAwake? keepAwake,
     List<Override> overrides = const [],
   })  : db = AppDatabase(NativeDatabase.memory()),
+        keepAwake = keepAwake ?? FakeKeepAwake(),
         fileStore = fileStore ?? MemoryFileStore(),
         passwordStore = passwordStore ?? MemoryPasswordStore() {
     widget = ProviderScope(
@@ -99,6 +112,7 @@ class TestApp {
         incomingFilesEnabledProvider.overrideWithValue(false),
         bookFileStoreProvider.overrideWithValue(this.fileStore),
         passwordStoreProvider.overrideWithValue(this.passwordStore),
+        keepAwakeProvider.overrideWithValue(this.keepAwake),
         pickFilesProvider.overrideWithValue(
             () async => picked?.call() ?? [fakeSource('book.pdf')]),
         if (importService != null) importServiceProvider.overrideWithValue(importService),
@@ -111,6 +125,7 @@ class TestApp {
   final AppDatabase db;
   final BookFileStore fileStore;
   final PasswordStore passwordStore;
+  final FakeKeepAwake keepAwake;
   late final Widget widget;
 
   Future<void> pump(WidgetTester tester) async {

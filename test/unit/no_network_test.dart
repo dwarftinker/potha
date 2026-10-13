@@ -6,12 +6,15 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:potha/core/db/app_database.dart';
+import 'package:potha/core/document/document_format.dart';
 import 'package:potha/core/document/pdf/pdf_document_format.dart';
 import 'package:potha/core/secure/password_store.dart';
 import 'package:potha/core/storage/book_file_store_io.dart';
 import 'package:potha/features/library/data/library_repository.dart';
 import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
+import 'package:potha/features/reader/data/thumbnail_cache.dart';
+import 'package:potha/features/reader/domain/text_search.dart';
 
 final _pdfium = File('build/test_pdfium/libpdfium.so');
 
@@ -68,6 +71,30 @@ void main() {
 
           await db.close();
           await root.delete(recursive: true);
+        }, overrides));
+    expect(overrides.attempts, isEmpty);
+  }, skip: !_pdfium.existsSync());
+
+  // 002 FR-039, FR-041: the reader's own work (contents, links, page text, search,
+  // thumbnails) stays on the device. The only way out is a web link the reader
+  // confirms, through LinkOpener (test/widget/reader_jump_test.dart).
+  testWidgets('reading, contents, links, search and thumbnails with no network',
+      (tester) async {
+    final overrides = _NoNetwork();
+    await tester.runAsync(() => HttpOverrides.runWithHttpOverrides(() async {
+          final file = File('test/fixtures/outline_links.pdf');
+          final doc = await const PdfDocumentFormat().open(BookFileRef(
+              path: file.absolute.path, readAll: file.readAsBytes, sizeBytes: file.lengthSync()));
+          expect(await doc.loadOutline(), isNotEmpty);
+          expect((await doc.loadLinks(2)).whereType<WebLink>(), isNotEmpty);
+          expect((await doc.loadPageText(1))!.hasText, isTrue);
+          final run = TextSearch(doc).start('chapter', fromPage: 1);
+          await run.done;
+          expect(run.results, isNotEmpty);
+          final thumbs = ThumbnailCache(doc, width: 60);
+          (await thumbs.load(3))!.dispose();
+          thumbs.dispose();
+          await doc.close();
         }, overrides));
     expect(overrides.attempts, isEmpty);
   }, skip: !_pdfium.existsSync());
