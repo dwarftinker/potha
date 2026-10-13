@@ -121,11 +121,15 @@ lib/
 │   │       ├── pdf_view_controller.dart # implements the two new members
 │   │       └── pdf_document_view.dart   # selection highlight, interaction lock
 │   ├── dictionary/
-│   │   ├── lexicon.dart                 # Lexicon, DictionaryEntry, WordFormLink, DictionaryInfo
+│   │   ├── lexicon.dart                 # Lexicon, DictionaryEntry, WordFormLink, DictionaryInfo,
+│   │   │                                #   OnlineDictionary interface, OnlineResult
+│   │   ├── lookup_key.dart              # normalisation (shared with the build script's rules)
 │   │   ├── dictionary_database.dart     # read-only drift database over the built file
 │   │   ├── dictionary_store.dart        # DictionaryStore, DictionaryStatus, provider
 │   │   ├── dictionary_store_io.dart     # unpack the asset into app support (isolate)
 │   │   ├── dictionary_store_web.dart    # fetch + DecompressionStream + initializeDatabase
+│   │   ├── dictionary_warmup.dart       # startDictionaryUnpack(): conditional import, no-op on web
+│   │   ├── dictionary_warmup_io.dart    # starts the io store's unpack after the first frame
 │   │   └── online_dictionary.dart       # Wikimedia REST client and parser
 │   └── platform/network_status.dart     # NetworkStatus over connectivity_plus
 └── features/
@@ -133,7 +137,6 @@ lib/
     └── reader/
         ├── domain/
         │   ├── word_extractor.dart      # hit test, word rules, line-break joins, phrases
-        │   ├── lookup_key.dart          # normalisation (shared with the build script's rules)
         │   ├── lemmatiser.dart          # rule fallback
         │   ├── lookup_resolver.dart     # ordering, notes, phrases, hyphen parts
         │   └── panel_placement.dart     # top or bottom, first height
@@ -156,7 +159,7 @@ lib/
 test/
 ├── fixtures/dictionary/                 # sample.jsonl, prose_1000.txt, inflections_200.tsv,
 │                                        # hyphenation.tsv, wikimedia_*.json
-├── unit/dictionary/                     # database over the sample, store, online parser
+├── unit/dictionary/                     # lookup key, database over the sample, store, online parser
 ├── unit/reader/                         # extractor, lemmatiser, resolver, controller, history,
 │                                        # placement, migration v2→v3
 ├── eval/                                # SC-001/3/4 against the full dictionary (skipped if absent)
@@ -173,6 +176,9 @@ tool/
 **Structure Decision**: the same layout as 001 and 002.
 - The dictionary goes in `core/dictionary/`, because it is shared infrastructure: 005's
   vocabulary feature will use it.
+- `lookupKey` lives with the dictionary, because `core/` must not depend on a feature.
+- The app starts the mobile unpack through `dictionary_warmup.dart`, whose web half is
+  empty, so the web first-load bundle doesn't gain the dictionary store.
 - Lookup logic and UI belong to the reader feature, which keeps them inside the deferred
   reader library on the web. `DictionaryStore.ensureStarted()` is called from the
   reader, so nothing runs at the web first load.

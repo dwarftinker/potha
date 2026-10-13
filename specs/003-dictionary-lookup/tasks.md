@@ -42,10 +42,11 @@ the web store and the interaction lock.
   - `VACUUM`s, gzips to assets/dictionary/en.sqlite.gz, and writes assets/dictionary/LICENSE.md (Wiktionary, wiktextract / kaikki.org, dump date, CC BY-SA 4.0 with link).
   - Prints headwords, forms, size gzipped and size on disk; exits non-zero above 25 MB gzip or 90 MB on disk.
   - Has a self-test mode `--check` that verifies the key vectors from T002.
-- [ ] T004 Run `python3 tool/build_dictionary.py --download`.
-  - Record N, headwords, the gzip size and the on-disk size in the table in specs/003-dictionary-lookup/quickstart.md; lower `--top` if over budget.
-  - Then add `--extract-sample <words.txt>` to the script. Use it to write test/fixtures/dictionary/sample.jsonl with the real wiktextract lines for every word the tests use: melancholy, run, running, mouse, mice, good, better, study, studied, building, build, example, well-known, well, known, hello, reader, don't, give, give up, in, spite, in spite of, turkey, Turkey, serendipity, ephemeral, plus a few made-up control words that have no entry. Keep that word list in test/fixtures/dictionary/sample_words.txt.
-  - Check that `--sample` builds.
+- [ ] T004 Make the sample first, then the full build. The sample must not wait for the 2.8 GB download (analysis G2).
+  - Add `--fetch-sample <words.txt>` to the script: for each word, fetch the per-word wiktextract JSONL that kaikki.org links from the word's page (English edition), keep the `lang_code == "en"` lines, and write them to test/fixtures/dictionary/sample.jsonl. Send no identifying data beyond a `User-Agent` of `Potha-build (https://github.com/dwarftinker/potha)`. If kaikki.org no longer serves per-word files, add `--extract-sample` instead and cut the lines from the full dump once it is downloaded.
+  - The words, every word the tests use: melancholy, run, running, mouse, mice, good, better, study, studied, building, build, example, well-known, well, known, hello, reader, don't, give, give up, in, spite, in spite of, turkey, Turkey, serendipity, ephemeral, plus a few made-up control words that have no entry. Keep that word list in test/fixtures/dictionary/sample_words.txt.
+  - Check that `--sample` builds; T013 can start from here.
+  - Then run `python3 tool/build_dictionary.py --download` (in the background, alongside Phase 2). Record N, headwords, the gzip size and the on-disk size in the table in specs/003-dictionary-lookup/quickstart.md; lower `--top` if over budget.
 - [ ] T005 [P] Extend tool/make_fixtures.py with a `--lookup` flag writing test/fixtures/lookup_prose.pdf. It is 3 text pages:
   - page 1: "melancholy", "running", "mice", "better", "studied", "building", “Hello,”, "reader's", "don't", "give up", "in spite of", "Turkey", a number, a URL and an email address, each at known positions;
   - page 2: "exam-" / "ple" and "well-" / "known" split across line ends;
@@ -79,15 +80,17 @@ the web store and the interaction lock.
   - `ReaderPreferences.tapToDefine` bool default false; `ReaderPreferences.lookupHintShown` bool default false.
   - `schemaVersion` 3 with `from2To3` in `stepByStep`.
   Then run `dart run build_runner build`, `dart run drift_dev make-migrations` and `dart run drift_dev schema generate drift_schemas/app_database/ test/unit/db/generated/`; make T008 pass
-- [ ] T010 [P] Unit-test `lookupKey` in test/unit/reader/lookup_key_test.dart against test/fixtures/dictionary/key_vectors.tsv
-- [ ] T011 Implement `lookupKey` in lib/features/reader/domain/lookup_key.dart; make T010 pass
+- [ ] T010 [P] Unit-test `lookupKey` in test/unit/dictionary/lookup_key_test.dart against test/fixtures/dictionary/key_vectors.tsv
+- [ ] T011 Implement `lookupKey` in lib/core/dictionary/lookup_key.dart (core, not the reader feature: the dictionary layer uses it, analysis F2); make T010 pass
 - [ ] T012 [P] Create lib/core/dictionary/lexicon.dart per contracts/lookup.md:
   - `Lexicon` (`language`, `info`, `entries(key)`, `formsOf(key)`, `hasEntry(key)`);
   - `DictionaryInfo` (source, licence, licenceUrl, sourceUrl, dumpDate, version);
   - `DictionaryEntry` (headword, pos, ipa, senses);
   - `Sense` (gloss, tags, examples);
   - `WordFormLink` (form, base, relation enum matching the build script's values);
-  - `DictionaryStatus` sealed (`notStarted`, `downloading(bytes, total)`, `unpacking`, `ready`, `failed(offline | error)`).
+  - `DictionaryStatus` sealed (`notStarted`, `downloading(bytes, total)`, `unpacking`, `ready`, `failed(offline | error)`);
+  - the `OnlineDictionary` interface and `OnlineResult` sealed (`found(entries)`, `notFound`, `failed`); the Wikimedia client comes in T068.
+  Also create lib/core/platform/network_status.dart: the `NetworkStatus` interface (`isOnline`, `changes`), its `connectivity_plus` implementation and `networkStatusProvider`. T018 and T026 need both interfaces in this phase (analysis F1).
 - [ ] T013 [P] Write test/unit/dictionary/dictionary_database_test.dart over build/fixtures/dict_sample.sqlite (skipped with a message if it is missing; the message gives the build command):
   - `entries('melancholy')` has a noun and an adjective with glosses and an IPA;
   - `formsOf('mice')` → mouse, plural;
@@ -189,7 +192,9 @@ the web store and the interaction lock.
 
 - [ ] T032 [P] [US1] Implement `hitTest` and `WordExtractor` (`wordAt`, `queryFor`; `extendTo` comes in US5) in lib/features/reader/domain/word_extractor.dart, with `WordSelection` and `LookupQuery` per data-model.md; make T027 pass
 - [ ] T033 [P] [US1] Implement `panelPlacement` in lib/features/reader/domain/panel_placement.dart; make T028 pass
-- [ ] T034 [P] [US1] Implement a first `LookupResolver` in lib/features/reader/domain/lookup_resolver.dart: exact entries for each candidate in order, else `notFound` (inflections come in US2), with `LookupResult` per data-model.md
+- [ ] T034 [P] [US1] Test first, then implement a first `LookupResolver` (Principle IV; analysis C1):
+  - Write test/unit/reader/lookup_resolver_test.dart (fake lexicon): an exact entry is returned; candidates are tried in order, so the joined line-break word ("example") wins over the hyphenated one ("exam-ple"); no entry gives `notFound`. Run it and see it fail.
+  - Then implement lib/features/reader/domain/lookup_resolver.dart: exact entries for each candidate in order, else `notFound` (inflections come in US2), with `LookupResult` per data-model.md; make the test pass.
 - [ ] T035 [US1] Implement `LookupController` and its provider in lib/features/reader/lookup_controller.dart: request ids, `lookUpAt`, `close`, the `LookupState` states in data-model.md, and the store status mapped to `preparing`; make T029 pass
 - [ ] T036 [US1] Create lib/features/reader/ui/lookup_panel.dart, per contracts/lookup-ui.md "Panel":
   - an animated overlay, bottom or top from `panelPlacement`, with a draggable sheet (first height ≤ 1/3, max 85%);
@@ -228,7 +233,7 @@ the web store and the interaction lock.
   - studies → study; studied → study; stopped → stop; running → run; making → make; boxes → box; happier → happy; biggest → big;
   - candidates are only kept if `hasEntry` is true (fake lexicon);
   - irregular forms are not invented ("mice" gives nothing from rules).
-- [ ] T041 [P] [US2] Unit-test resolver ordering in test/unit/reader/lookup_resolver_test.dart (fake lexicon):
+- [ ] T041 [P] [US2] Extend test/unit/reader/lookup_resolver_test.dart (from T034) with inflection ordering (fake lexicon):
   - mice → mouse with "mice – plural of mouse";
   - better → better's own entries first, then good with "comparative of good";
   - building → noun building first, then build with "form of build";
@@ -270,7 +275,7 @@ the web store and the interaction lock.
 ### Implementation for User Story 3
 
 - [ ] T051 [US3] Show the store states in lib/features/reader/ui/lookup_panel.dart (progress, offline message, preparing); make T047 pass
-- [ ] T052 [US3] Start the mobile unpack at app start (`ensureStarted` in lib/app.dart for io only, after the first frame, so it doesn't delay startup; web stays on book open). In lib/features/reader/ui/reader_screen.dart, prefetch the visible pages' text into `PageTextCache` when the view settles (idle, after position changes stop for 300 ms)
+- [ ] T052 [US3] Start the mobile unpack at app start through lib/core/dictionary/dictionary_warmup.dart: `startDictionaryUnpack()` by conditional import, which starts the io store's `ensureStarted` after the first frame (dictionary_warmup_io.dart) and does nothing on the web, so the web first-load bundle doesn't gain the store (analysis F3). lib/app.dart only calls `startDictionaryUnpack()`; the web stays on book open. In lib/features/reader/ui/reader_screen.dart, prefetch the visible pages' text into `PageTextCache` when the view settles (idle, after position changes stop for 300 ms)
 - [ ] T053 [US3] Run T050 on the S24 and T049 against the full dictionary; record both in specs/003-dictionary-lookup/quickstart.md "Measurements". If p95 > 300 ms, profile and fix by the R8 breakdown before continuing (Principle V)
 
 **Checkpoint**: P1 complete: a releasable offline lookup. Quickstart 1–12 and 22–25 pass on the S24 and in Chrome.
@@ -361,7 +366,7 @@ the web store and the interaction lock.
 ### Implementation for User Story 6
 
 - [ ] T068 [P] [US6] Implement `OnlineDictionary` (http, Wikimedia REST definition endpoint, research R9) in lib/core/dictionary/online_dictionary.dart; make T065 pass
-- [ ] T069 [P] [US6] Implement `NetworkStatus` over `connectivity_plus` in lib/core/platform/network_status.dart, with a provider
+- [ ] T069 [US6] Moved: `NetworkStatus` and its provider are created in T012 (analysis F1). Here, check that `networkStatusProvider` updates the panel live: going offline while "Search online" is shown replaces it with "Online search isn't available offline" (extend test/widget/lookup_not_found_test.dart)
 - [ ] T070 [US6] Add `searchOnline` and the online states to lib/features/reader/lookup_controller.dart, and the not-found and online views to lookup_panel.dart; make T066 and T067 pass
 
 **Checkpoint**: Not-found is never a dead end online, and nothing leaves the device without the reader's action.
@@ -430,14 +435,15 @@ the web store and the interaction lock.
   - long-press drag "give" → "up";
   - tap-to-define on, tap a word, turn it off with the chip;
   - history shows the words;
-  - scanned.pdf long-press message.
+  - scanned.pdf long-press message;
+  - zoomed to 3× and in continuous mode: long-press a word, check the selection rect sits on the word and the panel doesn't cover it (FR-030, analysis G1).
 - [ ] T081 [P] Extend test/widget/accessibility_test.dart for lookup:
   - the panel, handles, chip, hint, history sheet and About have labels;
   - the panel is announced, and each sense is a separate node (FR-033);
   - `androidTapTargetGuideline` and `textContrastGuideline` pass in the light, dark and sepia themes;
   - at text scale 2.0 the panel keeps its first size, scrolls, and doesn't overflow.
 - [ ] T082 Check the web build: run `tool/build_web.sh` and serve it.
-  - The first load makes no dictionary request and its size is unchanged from 002 (record it).
+  - The first load makes no dictionary request and its size is unchanged from 002 (record it); `main.dart.js` contains no dictionary-store code (T052's warm-up is a no-op on the web).
   - Opening a book downloads the dictionary with progress, and lookups work offline after a reload.
   - Peak memory in Chrome on the S24 is recorded.
   Record the results in specs/003-dictionary-lookup/quickstart.md (FR-022, research R2)
@@ -457,7 +463,7 @@ the web store and the interaction lock.
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: none. T003 → T004 (needs the script), and T004 → T013 (sample dictionary). T006 must finish before T018, and T007 before T020.
+- **Setup (Phase 1)**: none. T003 → T004 (needs the script), and T004's sample step → T013 (the full build in T004 only gates T042, T049, T053 and T079). T006 must finish before T018, and T007 before T020.
 - **Foundational (Phase 2)**: depends on Setup; blocks all stories.
 - **US1 (Phase 3)**: depends on Foundational.
 - **US2 (Phase 4)**: depends on US1's resolver (T034) and panel (T036).
@@ -476,6 +482,8 @@ the web store and the interaction lock.
 - lib/features/reader/lookup_controller.dart: T035, T064, T070, T073, T078
 - lib/features/reader/domain/word_extractor.dart: T032, T062
 - lib/features/reader/domain/lookup_resolver.dart: T034, T045, T062
+- test/unit/reader/lookup_resolver_test.dart: T034, T041
+- test/widget/lookup_not_found_test.dart: T067, T069
 - test/unit/reader/lookup_controller_test.dart: T029, T066, T071
 - test/widget/reader_test_app.dart: T019, T026
 
@@ -489,7 +497,7 @@ the web store and the interaction lock.
 
 - Setup: T002 and T005 alongside T003; T006 and T007 in parallel after T001.
 - Foundational: T008, T010, T012, T015, T017, T019, T021, T023, T025 and T026 in parallel. Then T009, T011, T013/T014, T016, T018, T020, T022 and T024.
-- Each story's test tasks run in parallel, and so do its new-file tasks (T032–T034, T037, T038, T044, T057, T063, T068, T069, T077).
+- Each story's test tasks run in parallel, and so do its new-file tasks (T032–T034, T037, T038, T044, T057, T063, T068, T077).
 - After US1, the P2 stories US4, US5 and US6 touch different domain files and can be developed in parallel, but their shared UI files (above) are edited in sequence.
 - Polish: T079–T081 in parallel.
 
