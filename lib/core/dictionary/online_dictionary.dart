@@ -13,8 +13,8 @@ const _endpoint = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
 const _agent = 'Potha/1.0 (https://github.com/dwarftinker/potha)';
 
 class WikimediaDictionary implements OnlineDictionary {
-  // ignore: prefer_initializing_formals (named parameters can't be private)
   WikimediaDictionary({http.Client? client, this.timeout = const Duration(seconds: 8)})
+    // ignore: prefer_initializing_formals (named parameters can't be private)
     : _client = client;
 
   /// Created on the first search, so nothing network-related exists before the reader
