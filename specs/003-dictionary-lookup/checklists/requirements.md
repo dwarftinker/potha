@@ -37,6 +37,7 @@
   "instantly" → 300 ms for 95% of lookups (SC-002); "standard English prose" → a
   1,000-token test set (SC-001); phrase length → up to 8 words (FR-019); discoverability →
   4 of 5 first-time users (SC-005).
-- Left for `/speckit-clarify` (CLAUDE.md): which dictionary and its licence (the spec
-  only requires attribution, FR-034), and the tap-to-define default (assumed off).
+- Clarified (2026-10-13, five questions): English Wiktionary, CC BY-SA (FR-034);
+  tap-to-define off by default (FR-015); online search via Wikimedia (FR-021); dictionary
+  inside the install on mobile (FR-013); one history line per word per book (FR-025).
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

@@ -12,6 +12,24 @@ on the web) a word to see its definition in a panel; inflected words resolve to 
 word; works offline in under 300 ms; optional tap-to-define mode; phrase lookup; a clear
 not-found state with an optional online search; copy and related words; lookup history."
 
+## Clarifications
+
+### Session 2026-10-13
+
+- Q: Which dictionary should Potha include with the app? → A: English Wiktionary, trimmed
+  to definitions, examples, pronunciations, word forms and phrases (CC BY-SA; Wiktionary
+  credited in the app, and the built dictionary file shared under the same licence).
+- Q: Should tap-to-define be on or off when someone first installs the app? → A: Off by
+  default; the one-time hint mentions the tap-to-define setting.
+- Q: Where should "Search online" look words up? → A: Wiktionary's own definition service
+  (Wikimedia); no key or account, same licence and credit as the offline dictionary.
+- Q: On Android and iOS, should the dictionary come inside the app install or download on
+  first use? → A: Inside the install; it works offline from first launch. Only the web
+  downloads it (FR-022).
+- Q: When the same word is looked up more than once in a book, how does history show it?
+  → A: One line per word per book, with the latest date and page and the number of
+  lookups; kept until cleared or the book is removed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Look up a word by selecting it (Priority: P1)
@@ -46,7 +64,7 @@ close the panel each of the three ways; on desktop web, double-click a word.
    third of the screen, scrolls inside, and can be dragged up to read more.
 7. **Given** the reader opens the reader for the first time, **When** the page appears,
    **Then** a one-time hint says how to look up a word (long-press; double-click on the
-   web with a mouse).
+   web with a mouse) and that tap-to-define can be turned on in the settings.
 
 ---
 
@@ -212,8 +230,9 @@ all books, then clear it.
 **Acceptance Scenarios**:
 
 1. **Given** lookups in two books, **When** the reader opens history from a book, **Then**
-   that book's lookups are listed newest first with date and page; an "All books" view
-   lists every lookup with the book's title.
+   that book's words are listed newest first, each once, with the latest date and page
+   and how many times it was looked up; an "All books" view lists them with each book's
+   title.
 2. **Given** the history, **When** the reader chooses an entry, **Then** its definition
    opens.
 3. **Given** the history, **When** the reader chooses Clear and confirms, **Then** it is
@@ -262,7 +281,8 @@ all books, then clear it.
 - **FR-005**: The panel MUST show the headword, the pronunciation when known, definitions
   numbered and grouped by part of speech, and an example under definitions that have one.
 - **FR-006**: The first time the reader screen opens, a one-time hint MUST explain how to
-  look up a word (long-press; double-click with a mouse).
+  look up a word (long-press; double-click with a mouse) and mention that tap-to-define
+  can be turned on in the reader settings.
 
 **Word rules**
 
@@ -284,14 +304,15 @@ all books, then clear it.
   relationship ("mice – plural of mouse"); when the exact form has its own entry, that
   entry MUST come first.
 - **FR-013**: Lookups MUST work with no network, from an English dictionary included with
-  the app, and show the definition within 300 ms of the gesture on a mid-range phone.
+  the app (inside the install on Android and iOS, so it works from first launch; on the
+  web see FR-022), and show the definition within 300 ms of the gesture on a mid-range phone.
 - **FR-014**: When several lookups overlap, only the most recently requested result MUST
   be shown.
 
 **Tap-to-define**
 
-- **FR-015**: The reader MUST be able to turn tap-to-define on and off from the reader
-  controls; the choice applies to all books and is remembered.
+- **FR-015**: Tap-to-define MUST be off by default. The reader MUST be able to turn it on
+  and off from the reader controls; the choice applies to all books and is remembered.
 - **FR-016**: With tap-to-define on, a single tap on a word in the middle area MUST open
   its definition at once (no wait for a second tap); edge zones MUST still turn pages, and
   a tap where there is no word MUST still show or hide the controls.
@@ -311,8 +332,9 @@ all books, then clear it.
 - **FR-020**: A word with no offline entry MUST show a clear not-found state.
 - **FR-021**: When online, the not-found state MUST offer "Search online"; the word MUST
   be sent to the online source only when the reader chooses it, and the result MUST be
-  shown in the panel with its source named. When offline, the state MUST say online search
-  is unavailable.
+  shown in the panel with its source named. The online source is Wiktionary's own
+  definition service (Wikimedia); only the word is sent, with no account, key or
+  identifier. When offline, the state MUST say online search is unavailable.
 - **FR-022**: On the web, the dictionary MUST start downloading in the background the
   first time the reader opens a book, and be kept so lookups then work offline. The first
   app load MUST NOT include it. A lookup made before the download finishes MUST show that
@@ -327,8 +349,9 @@ all books, then clear it.
 
 **History**
 
-- **FR-025**: Each lookup MUST be recorded with the word, the entry shown, the book, the
-  page and the date and time.
+- **FR-025**: Lookups MUST be recorded as one history line per word per book, holding the
+  word, the entry shown, the latest page and date and time, and how many times it was
+  looked up; looking the word up again in that book updates the line.
 - **FR-026**: The reader MUST be able to view history for the current book and for all
   books (newest first), reopen an entry from it, and clear it for one book or all books
   after confirming.
@@ -347,7 +370,10 @@ all books, then clear it.
 - **FR-033**: The panel MUST be readable by screen readers (headword, part of speech and
   each definition), its controls labelled, its text scaling with the system setting, and
   it MUST follow the reading theme with WCAG AA contrast.
-- **FR-034**: The dictionary's licence and attribution MUST be shown in the app.
+- **FR-034**: The included dictionary is built from English Wiktionary (CC BY-SA). The app
+  MUST credit Wiktionary and name the licence, both from the panel (for example an "About
+  this dictionary" link) and in the app's licences screen, and the dictionary file MUST be
+  shared under the same licence.
 
 ### Key Entities
 
@@ -356,8 +382,9 @@ all books, then clear it.
   Phrases are entries too. One dictionary per language; English first.
 - **Word form**: links an inflected form to its base word with the relationship (plural,
   past tense, comparative, …).
-- **Lookup**: the text as selected, the word looked up, the entry shown (or not found),
-  the book, the page and when. Kept until cleared or the book is removed.
+- **Lookup history line**: one per word per book: the word looked up, the entry shown (or
+  not found), the book, the latest page and time, and the number of lookups. Kept until
+  cleared or the book is removed.
 - **Reader preference**: tap-to-define on or off (all books); whether the one-time hint
   has been shown.
 
@@ -387,12 +414,13 @@ all books, then clear it.
 - With a mouse, a single click still shows or hides the controls at once; a double-click
   additionally looks up the word (the two clicks toggle the controls twice, leaving them
   as they were).
-- Tap-to-define is off until the reader turns it on (the input describes turning it on).
 - The panel may grow by dragging; its first size is at most a third of the screen.
+- The included dictionary comes from English Wiktionary, trimmed to what the panel shows
+  (definitions, examples, pronunciations, word forms, phrases, proper nouns).
 - English only in this feature; the dictionary is one of several possible per-language
   dictionaries, so others can be added later.
-- The online source is used only on the reader's explicit request per word; which source,
-  and what it receives, is decided in the plan.
+- The online source (Wiktionary via Wikimedia) is used only on the reader's explicit
+  request per word, and receives only that word.
 - Lookup history is on by default and stays on the device; it can be cleared but not
   turned off in this feature.
 - "Mid-range phone" is the same reference as in features 001 and 002; iOS is a supported
