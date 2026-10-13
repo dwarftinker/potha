@@ -17,6 +17,7 @@ class ReaderTheme {
     required this.barForeground,
     required this.highlight,
     required this.activeHighlight,
+    required this.selection,
   });
 
   final ReadingTheme name;
@@ -33,6 +34,9 @@ class ReaderTheme {
   final Color highlight;
   final Color activeHighlight;
 
+  /// The word selected for lookup (003 FR-002), as it should look on screen.
+  final Color selection;
+
   static ReaderTheme of(ReadingTheme theme) => switch (theme) {
     ReadingTheme.light => _light,
     ReadingTheme.sepia => _sepia,
@@ -47,6 +51,7 @@ class ReaderTheme {
     barForeground: Color(0xFF212121),
     highlight: Color(0x66FFD54F),
     activeHighlight: Color(0x80FF9800),
+    selection: Color(0x664A90E2),
   );
 
   static final _sepia = ReaderTheme._(
@@ -57,6 +62,7 @@ class ReaderTheme {
     barForeground: const Color(0xFF3E2F22),
     highlight: const Color(0x66E6BE64),
     activeHighlight: const Color(0x80D78C3C),
+    selection: const Color(0x665A87A8),
   );
 
   static final _dark = ReaderTheme._(
@@ -67,6 +73,7 @@ class ReaderTheme {
     barForeground: const Color(0xFFE0E0E0),
     highlight: const Color(0x808C6E14),
     activeHighlight: const Color(0x99A0641E),
+    selection: const Color(0x8040699A),
   );
 
   /// out_c = ink_c + (paper_c − ink_c) · in_c, per channel.
@@ -114,6 +121,7 @@ class ReaderTheme {
   /// the filter turns into [highlight] (research R5).
   Color get highlightPaintColor => _beforeFilter(highlight);
   Color get activeHighlightPaintColor => _beforeFilter(activeHighlight);
+  Color get selectionPaintColor => _beforeFilter(selection);
 
   Color _beforeFilter(Color intended) {
     final p = pageMatrix;

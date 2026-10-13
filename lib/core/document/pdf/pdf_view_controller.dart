@@ -32,6 +32,9 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   /// Minimum zoom, relative to the normal view. Set by the view.
   double minZoom = 1;
 
+  /// True while pans and zooms are locked (003 research R6); the view listens.
+  final interactionLock = ValueNotifier(false);
+
   ReadingPosition? _lastReported;
   ValueChanged<ReadingPosition>? onPositionChanged;
 
@@ -201,7 +204,22 @@ class PdfViewController extends ChangeNotifier implements DocumentViewController
   }
 
   @override
+  Rect? pageRectToGlobal(int page, Rect normalised) {
+    if (!isReady || page < 1 || page > _layout.pageLayouts.length) return null;
+    final r = _layout.pageLayouts[page - 1];
+    Offset doc(double x, double y) => Offset(r.left + x * r.width, r.top + y * r.height);
+    final topLeft = pdf.documentToGlobal(doc(normalised.left, normalised.top));
+    final bottomRight = pdf.documentToGlobal(doc(normalised.right, normalised.bottom));
+    if (topLeft == null || bottomRight == null) return null;
+    return Rect.fromPoints(topLeft, bottomRight);
+  }
+
+  @override
+  void setInteractionLocked(bool locked) => interactionLock.value = locked;
+
+  @override
   void dispose() {
+    interactionLock.dispose();
     pdf.removeListener(_matrixChanged);
     super.dispose();
   }

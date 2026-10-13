@@ -114,30 +114,30 @@ the web store and the interaction lock.
   - with `navigator.onLine` false, it gives `failed(offline)`;
   - no request happens before `ensureStarted` (FR-022).
 - [X] T018 Implement lib/core/dictionary/dictionary_store_web.dart: `fetch` with `Content-Length` progress, `DecompressionStream('gzip')` through `package:web`, and `DriftWebOptions.initializeDatabase` under the name `dictionary-en-<version>`, deleting older names. If T006 showed the fallback is needed, stream into OPFS instead and note it in the file header. Make T017 pass
-- [ ] T019 [P] Extend lib/core/document/document_format.dart per contracts/lookup.md:
+- [X] T019 [P] Extend lib/core/document/document_format.dart per contracts/lookup.md:
   - `DocumentViewController.pageRectToGlobal(int page, Rect normalised)` and `setInteractionLocked(bool)`;
   - `enum HighlightKind { match, activeMatch, selection }` replacing `PageHighlight.active`;
   - `ReaderViewConfig.selectionColor`.
   Update the search code (lib/features/reader/ui/search_panel.dart, reader_screen.dart) and the fakes in test/widget/reader_test_app.dart to the new highlight kinds; all 002 tests must still pass
-- [ ] T020 Implement the additions in lib/core/document/pdf/pdf_view_controller.dart (page rect via the layout and `documentToGlobal`) and lib/core/document/pdf/pdf_document_view.dart:
+- [X] T020 Implement the additions in lib/core/document/pdf/pdf_view_controller.dart (page rect via the layout and `documentToGlobal`) and lib/core/document/pdf/pdf_document_view.dart:
   - the selection highlight is painted inside the theme filter in its pre-inverted colour, like 002's highlights;
   - the lock rebuilds `PdfViewerParams` with `panEnabled` / `scaleEnabled` false, and `PagedDragHandler` ignores pointers while locked, per T007's result.
   Add cases to test/widget/pdf_view_test.dart: `pageRectToGlobal` maps a known rect on three_pages.pdf in both modes and after zoom, and the lock blocks a drag
-- [ ] T021 [P] Unit-test `PageTextCache` in test/unit/reader/page_text_cache_test.dart with a fake document:
+- [X] T021 [P] Unit-test `PageTextCache` in test/unit/reader/page_text_cache_test.dart with a fake document:
   - it keeps 8 pages (LRU);
   - concurrent requests for one page load it once;
   - `prefetch(pages)` loads only uncached pages;
   - a failed load isn't cached.
-- [ ] T022 Implement `PageTextCache` in lib/features/reader/data/page_text_cache.dart; make T021 pass
-- [ ] T023 [P] Extend test/widget/tap_detector_test.dart (fake time):
+- [X] T022 Implement `PageTextCache` in lib/features/reader/data/page_text_cache.dart; make T021 pass
+- [X] T023 [P] Extend test/widget/tap_detector_test.dart (fake time):
   - `onLongPress` fires at 500 ms while held, and not if the pointer moved over 18 px, a second pointer went down, or the view moved;
   - after a long-press, moves go to `onLongPressMove` and up to `onLongPressEnd`, with no `onTap`;
   - with a mouse, two clicks within 300 ms and 18 px fire `onTap` twice and `onDoubleClick` once;
   - a touch double tap fires no `onDoubleClick`;
   - taps still fire on pointer up with no wait.
-- [ ] T024 Extend lib/features/reader/ui/tap_detector.dart with `onLongPress`, `onLongPressMove`, `onLongPressEnd` and `onDoubleClick` (research R6, contracts/lookup.md table); make T023 pass
-- [ ] T025 [P] Extend `ReaderRepository` and its test (lib/features/reader/data/reader_repository.dart, test/unit/reader/reader_repository_test.dart): `watchPreferences` includes `tapToDefine` and `lookupHintShown`; add `setTapToDefine(bool)` and `markLookupHintShown()`
-- [ ] T026 [P] Add lookup fakes to test/widget/reader_test_app.dart:
+- [X] T024 Extend lib/features/reader/ui/tap_detector.dart with `onLongPress`, `onLongPressMove`, `onLongPressEnd` and `onDoubleClick` (research R6, contracts/lookup.md table); make T023 pass
+- [X] T025 [P] Extend `ReaderRepository` and its test (lib/features/reader/data/reader_repository.dart, test/unit/reader/reader_repository_test.dart): `watchPreferences` includes `tapToDefine` and `lookupHintShown`; add `setTapToDefine(bool)` and `markLookupHintShown()`
+- [X] T026 [P] Add lookup fakes to test/widget/reader_test_app.dart:
   - `FakeLexicon` (entries and forms from a map);
   - `FakeDictionaryStore` (status controllable, `ready` completer);
   - `FakeOnlineDictionary` (scripted results, records calls);

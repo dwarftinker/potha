@@ -67,6 +67,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     id: 1,
     theme: ReadingTheme.light,
     fit: PageFit.fitWidth,
+    tapToDefine: false,
+    // Until the saved row loads, so the one-time hint never flashes (003 FR-006).
+    lookupHintShown: true,
   );
   StreamSubscription<ReaderPreference>? _prefsSub;
   final _controls = AutoHide();
@@ -331,7 +334,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final out = <PageHighlight>[];
     for (final r in run.results) {
       if (identical(r, active)) {
-        out.add(PageHighlight(r.page, r.rects, active: true));
+        out.add(PageHighlight(r.page, r.rects, kind: HighlightKind.activeMatch));
       } else {
         (byPage[r.page] ??= []).addAll(r.rects);
       }
@@ -435,6 +438,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       backgroundColor: theme.background,
       highlightColor: theme.highlightPaintColor,
       activeHighlightColor: theme.activeHighlightPaintColor,
+      selectionColor: theme.selectionPaintColor,
       highlights: _highlights,
     );
   }

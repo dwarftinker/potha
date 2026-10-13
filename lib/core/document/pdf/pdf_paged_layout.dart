@@ -118,6 +118,13 @@ class PagedDragHandler {
 
   void onMove(PointerMoveEvent e) {
     if (e.pointer != _pointer || _pinched || !controller.isReady) return;
+    if (controller.interactionLock.value) {
+      // A long-press took this pointer for a selection (003 research R6): drop it, so
+      // neither the move nor the lift slides or turns the page.
+      _pointer = null;
+      _dragging = false;
+      return;
+    }
     _velocity?.addPosition(e.timeStamp, e.position);
     final delta = e.position - _last!;
     _last = e.position;
