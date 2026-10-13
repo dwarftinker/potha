@@ -20,6 +20,7 @@ import '../../../core/secure/password_store.dart';
 import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
 import '../../library/ui/password_dialog.dart';
+import '../data/history_repository.dart';
 import '../data/page_text_cache.dart';
 import '../data/reader_repository.dart';
 import '../data/thumbnail_cache.dart';
@@ -34,6 +35,7 @@ import '../progress_saver.dart';
 import 'contents_sheet.dart';
 import 'dictionary_about.dart';
 import 'go_to_page_dialog.dart';
+import 'history_sheet.dart';
 import 'jump_back_chip.dart';
 import 'lookup_hint.dart';
 import 'lookup_panel.dart';
@@ -113,6 +115,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   // Read once: the saver still writes while the screen is being disposed.
   late final ReaderRepository _repo = ref.read(readerRepositoryProvider);
   late final KeepAwake _keepAwake = ref.read(keepAwakeProvider);
+  late final HistoryRepository _history = ref.read(historyRepositoryProvider);
 
   /// A context below the reader's theme, for its sheets and dialogs.
   BuildContext? _themed;
@@ -231,6 +234,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         pageText: _pageText!,
         network: ref.read(networkStatusProvider),
         online: ref.read(onlineDictionaryProvider),
+        onRecord: (r) => _history.record(
+          bookId: book.id,
+          wordKey: r.wordKey,
+          word: r.word,
+          headword: r.headword,
+          source: r.source,
+          page: r.page,
+          newLookup: r.newLookup,
+        ),
       )..addListener(_lookupChanged);
       // The web downloads the dictionary on the first book open (FR-022); on mobile the
       // unpack has usually finished by now.
@@ -545,6 +557,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (page != null) await _jump(ReadingPosition(page, 0));
   });
 
+  Future<void> _openHistory() => _withControlsHeld(() async {
+    final line = await showHistorySheet(_ui, repo: _history, bookId: widget.bookId);
+    if (line != null) await _lookup?.showWord(line.word);
+  });
+
   Future<void> _openContents() => _withControlsHeld(() async {
     final page = await showContentsSheet(
       _ui,
@@ -730,6 +747,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                       icon: const Icon(Icons.search),
                                       tooltip: 'Search in book',
                                       onPressed: _openSearch,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.history),
+                                      tooltip: 'Lookup history',
+                                      onPressed: _openHistory,
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.toc),

@@ -400,13 +400,13 @@ the web store and the interaction lock.
 
 ### Tests for User Story 8 (write first, confirm they fail) ⚠️
 
-- [ ] T074 [P] [US8] Unit-test `HistoryRepository` in test/unit/reader/history_repository_test.dart (in-memory database):
+- [X] T074 [P] [US8] Unit-test `HistoryRepository` in test/unit/reader/history_repository_test.dart (in-memory database):
   - `record` creates a line with count 1, and a second lookup of the same key in the same book updates `word`, `headword`, `page`, `looked_up_at` and makes count 2;
   - the same word in another book is a separate line;
   - `watchBook` and `watchAll` are newest first, with book titles in `watchAll`;
   - `clearBook` / `clearAll`;
   - removing a book through `LibraryRepository` removes its lines (FR-025 to FR-027).
-- [ ] T075 [P] [US8] Widget-test in test/widget/lookup_history_test.dart:
+- [X] T075 [P] [US8] Widget-test in test/widget/lookup_history_test.dart:
   - after lookups in two books, the reader's "Lookup history" lists this book's words once each, with page, date and "×2";
   - "All books" shows titles;
   - choosing a row opens its definition;
@@ -416,9 +416,9 @@ the web store and the interaction lock.
 
 ### Implementation for User Story 8
 
-- [ ] T076 [US8] Implement `HistoryRepository` and its provider in lib/features/reader/data/history_repository.dart (upsert on (book_id, word_key)); make T074 pass
-- [ ] T077 [P] [US8] Create lib/features/reader/ui/history_sheet.dart (tabs, rows, Clear with confirmation, empty state)
-- [ ] T078 [US8] Record each lookup the reader starts (including related, not-found and online) from lib/features/reader/lookup_controller.dart after the panel shows. Add the "Lookup history" button to lib/features/reader/ui/reader_bars.dart, and open the sheet and its lookups from reader_screen.dart; make T075 pass
+- [X] T076 [US8] Implement `HistoryRepository` and its provider in lib/features/reader/data/history_repository.dart (upsert on (book_id, word_key)); make T074 pass
+- [X] T077 [P] [US8] Create lib/features/reader/ui/history_sheet.dart (tabs, rows, Clear with confirmation, empty state)
+- [X] T078 [US8] Record each lookup the reader starts (including related, not-found and online) from lib/features/reader/lookup_controller.dart after the panel shows. Add the "Lookup history" button to lib/features/reader/ui/reader_bars.dart, and open the sheet and its lookups from reader_screen.dart; make T075 pass
 
 **Checkpoint**: All stories done.
 

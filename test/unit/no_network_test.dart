@@ -17,6 +17,7 @@ import 'package:potha/core/dictionary/dictionary_database.dart';
 import 'package:potha/core/dictionary/dictionary_store_io.dart';
 import 'package:potha/core/dictionary/online_dictionary.dart';
 import 'package:potha/core/platform/network_status.dart';
+import 'package:potha/features/reader/data/history_repository.dart';
 import 'package:potha/features/reader/data/page_text_cache.dart';
 import 'package:potha/features/reader/data/reader_repository.dart';
 import 'package:potha/features/reader/data/thumbnail_cache.dart';
@@ -113,7 +114,7 @@ void main() {
     expect(overrides.attempts, isEmpty);
   }, skip: !_pdfium.existsSync());
 
-  // 003 FR-032: lookups, the dictionary store and tap-to-define stay on the device. The
+  // 003 FR-032: lookups, the dictionary store, history and tap-to-define stay on the device. The
   // only request is the reader's "Search online" (test/unit/dictionary).
   testWidgets('dictionary lookups with no network', (tester) async {
     final overrides = _NoNetwork();
@@ -133,11 +134,33 @@ void main() {
           // A real Wikimedia client and a device that says it is online: still nothing
           // is sent, because the reader never chose "Search online".
           final online = WikimediaDictionary();
+          final db = AppDatabase(NativeDatabase.memory());
+          await db.into(db.books).insert(BooksCompanion.insert(
+              id: 'b',
+              format: 'pdf',
+              title: 'Prose',
+              sortTitle: 'prose',
+              searchKey: 'prose',
+              originalFileName: 'prose.pdf',
+              contentHash: 'h',
+              sizeBytes: 1,
+              pageCount: 3,
+              isPasswordProtected: false,
+              addedAt: DateTime.utc(2026)));
+          final history = HistoryRepository(db);
+          final recorded = <Future<void>>[];
           final lookup = LookupController(
               store: dictionary,
               pageText: PageTextCache(doc.loadPageText),
               network: _Online(),
-              online: online);
+              online: online,
+              onRecord: (r) => recorded.add(history.record(
+                  bookId: 'b',
+                  wordKey: r.wordKey,
+                  word: r.word,
+                  headword: r.headword,
+                  source: r.source,
+                  page: r.page)));
           final text = (await doc.loadPageText(1))!;
           PagePoint on(String word) =>
               PagePoint(1, text.charRects[text.text.indexOf(word) + 1].center);
@@ -151,7 +174,8 @@ void main() {
           await lookup.lookUpAt(on('Call'));
           expect((lookup.state as LookupNotFound).online, OnlineSearch.available);
 
-          final db = AppDatabase(NativeDatabase.memory());
+          await Future.wait(recorded);
+          expect(await history.watchBook('b').first, hasLength(3));
           final repo = ReaderRepository(db);
           await repo.setTapToDefine(true);
           await repo.setTapToDefine(false);

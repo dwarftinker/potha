@@ -7,6 +7,7 @@ import 'dart:ui' show Offset;
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/db/app_database.dart' show LookupSource;
 import '../../core/dictionary/dictionary_store.dart';
 import '../../core/document/document_format.dart';
 import '../../core/platform/network_status.dart';
@@ -90,12 +91,35 @@ class LookupNotFound extends LookupState {
 
 // ignore_for_file: prefer_initializing_formals (named parameters can't be private)
 
+/// A lookup to add to the history (US8, research R10).
+@immutable
+class LookupRecord {
+  const LookupRecord({
+    required this.wordKey,
+    required this.word,
+    required this.headword,
+    required this.source,
+    required this.page,
+    this.newLookup = true,
+  });
+
+  final String wordKey;
+  final String word;
+  final String? headword;
+  final LookupSource source;
+  final int page;
+
+  /// False for an online result of a lookup already recorded.
+  final bool newLookup;
+}
+
 class LookupController extends ChangeNotifier {
   LookupController({
     required DictionaryStore store,
     required PageTextCache pageText,
     NetworkStatus? network,
     OnlineDictionary? online,
+    this.onRecord,
     WordExtractor extractor = const WordExtractor(),
   }) : _store = store,
        _pageText = pageText,
@@ -111,6 +135,10 @@ class LookupController extends ChangeNotifier {
   final OnlineDictionary? _online;
   final WordExtractor _extractor;
   StreamSubscription<bool>? _networkSub;
+
+  /// Called after the panel shows each lookup the reader starts (not for Back, nor for
+  /// a word reopened from the history).
+  final void Function(LookupRecord record)? onRecord;
 
   LookupState _state = const LookupIdle();
   int _request = 0;
@@ -233,7 +261,20 @@ class LookupController extends ChangeNotifier {
     return best;
   }
 
-  Future<void> _resolve(int id, WordSelection? selection, LookupQuery query) async {
+  /// Shows [word] from the history: no page selection, not recorded again.
+  Future<void> showWord(String word) async {
+    final query = _extractor.queryForWord(word);
+    if (query == null) return;
+    _backStack.clear();
+    await _resolve(++_request, null, query, record: false);
+  }
+
+  Future<void> _resolve(
+    int id,
+    WordSelection? selection,
+    LookupQuery query, {
+    bool record = true,
+  }) async {
     final lexicon = await _lexicon(id, selection);
     if (lexicon == null || id != _request) return;
     _set(LookupLoading(selection));
@@ -244,6 +285,18 @@ class LookupController extends ChangeNotifier {
           ? LookupShown(selection, result)
           : LookupNotFound(selection, result, online: _offer(result.query)),
     );
+    // After the panel shows: outside the lookup's time budget (research R10).
+    if (record && selection != null && query.candidates.isNotEmpty) {
+      onRecord?.call(
+        LookupRecord(
+          wordKey: query.candidates.first,
+          word: query.display,
+          headword: result.headword,
+          source: result.found ? LookupSource.offline : LookupSource.none,
+          page: selection.page,
+        ),
+      );
+    }
   }
 
   /// "Search online" is offered when there is a client, the device is online, and the
@@ -290,6 +343,19 @@ class LookupController extends ChangeNotifier {
             ),
           ),
         );
+        final selection = state.selection;
+        if (selection != null && query.candidates.isNotEmpty) {
+          onRecord?.call(
+            LookupRecord(
+              wordKey: query.candidates.first,
+              word: query.display,
+              headword: entries.first.headword,
+              source: LookupSource.online,
+              page: selection.page,
+              newLookup: false,
+            ),
+          );
+        }
       case OnlineNotFound():
         _set(state.withOnline(OnlineSearch.nothingFound));
       case OnlineFailed():
