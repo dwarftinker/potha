@@ -290,8 +290,8 @@ the web store and the interaction lock.
 
 ### Tests for User Story 4 (write first, confirm they fail) ⚠️
 
-- [ ] T054 [P] [US4] Extend test/unit/reader/tap_zones_test.dart for the classification order with tap-to-define on: link > edge zone > word > controls; with it off, a word gives controls (contracts/lookup-ui.md)
-- [ ] T055 [P] [US4] Widget-test in test/widget/lookup_tap_to_define_test.dart:
+- [X] T054 [P] [US4] Extend test/unit/reader/tap_zones_test.dart for the classification order with tap-to-define on: link > edge zone > word > controls; with it off, a word gives controls (contracts/lookup-ui.md)
+- [X] T055 [P] [US4] Widget-test in test/widget/lookup_tap_to_define_test.dart:
   - off by default (a tap on a word toggles the controls);
   - turned on from settings: a tap on a word opens the panel immediately (no 300 ms wait, using fake time); an edge tap on a word turns the page; a tap on empty space toggles the controls;
   - the chip "Tap to define" is visible with the controls hidden; tapping it asks to turn the mode off, and Turn off does so;
@@ -299,9 +299,9 @@ the web store and the interaction lock.
 
 ### Implementation for User Story 4
 
-- [ ] T056 [US4] Extend the tap classification in lib/features/reader/domain/tap_zones.dart with the word case; make T054 pass
-- [ ] T057 [P] [US4] Create lib/features/reader/ui/tap_to_define_chip.dart (small labelled chip with the turn-off confirmation)
-- [ ] T058 [US4] Add the "Tap to define" switch to lib/features/reader/ui/settings_sheet.dart. Wire the mode, the chip and word taps in lib/features/reader/ui/reader_screen.dart; make T055 pass
+- [X] T056 [US4] Extend the tap classification in lib/features/reader/domain/tap_zones.dart with the word case; make T054 pass
+- [X] T057 [P] [US4] Create lib/features/reader/ui/tap_to_define_chip.dart (small labelled chip with the turn-off confirmation)
+- [X] T058 [US4] Add the "Tap to define" switch to lib/features/reader/ui/settings_sheet.dart. Wire the mode, the chip and word taps in lib/features/reader/ui/reader_screen.dart; make T055 pass
 
 **Checkpoint**: Tap-to-define works and is visible; off by default.
 

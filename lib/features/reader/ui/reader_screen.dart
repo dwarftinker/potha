@@ -39,6 +39,7 @@ import 'reader_bars.dart';
 import 'reader_shortcuts.dart';
 import 'search_panel.dart';
 import 'settings_sheet.dart';
+import 'tap_to_define_chip.dart';
 import 'tap_detector.dart';
 import 'thumbnails_sheet.dart';
 import 'web_link_dialog.dart';
@@ -317,23 +318,33 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       viewWidth: viewWidth,
       pagePoint: point,
       linksOnPage: point == null ? const [] : _links[point.page] ?? const [],
+      tapToDefine: _prefs.tapToDefine,
     );
     switch (action) {
       case ToggleControls():
-        _controls.toggle();
-        if (_controls.visible && _lastPointerKind == PointerDeviceKind.mouse) {
-          _barsSettling = true;
-          _barsSettle?.cancel();
-          _barsSettle = Timer(const Duration(milliseconds: 300), () {
-            if (mounted) setState(() => _barsSettling = false);
-          });
-        }
+        _toggleControls();
       case PreviousPage():
         view.previous();
       case NextPage():
         view.next();
       case FollowLink(:final link):
         _followLink(link);
+      case LookUpWord(:final point):
+        // At once, no double-tap wait (FR-016); no word there: the controls instead.
+        _lookup?.lookUpAt(point, reportNoText: false).then((found) {
+          if (!found && mounted) _toggleControls();
+        });
+    }
+  }
+
+  void _toggleControls() {
+    _controls.toggle();
+    if (_controls.visible && _lastPointerKind == PointerDeviceKind.mouse) {
+      _barsSettling = true;
+      _barsSettle?.cancel();
+      _barsSettle = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) setState(() => _barsSettling = false);
+      });
     }
   }
 
@@ -518,10 +529,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _openSettings() => _withControlsHeld(
     () => showReaderSettings(
       _ui,
-      initial: ReaderSettings(mode: _mode, fit: _prefs.fit, theme: _prefs.theme),
+      initial: ReaderSettings(
+        mode: _mode,
+        fit: _prefs.fit,
+        theme: _prefs.theme,
+        tapToDefine: _prefs.tapToDefine,
+      ),
       onMode: _setMode,
       onFit: _repo.setFit,
       onTheme: _repo.setTheme,
+      onTapToDefine: _repo.setTapToDefine,
     ),
   );
 
@@ -744,6 +761,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                             constraints: const BoxConstraints(maxWidth: 560),
                             child: LookupHint(onDismiss: _repo.markLookupHintShown),
                           ),
+                        ),
+                      ),
+                    // Visible whether or not the controls are (FR-017).
+                    if (_prefs.tapToDefine)
+                      Positioned(
+                        right: 8,
+                        top: MediaQuery.paddingOf(context).top + (_controls.visible ? 64 : 4),
+                        child: TapToDefineChip(
+                          background: _theme.barBackground,
+                          foreground: _theme.barForeground,
+                          onTurnOff: () => _repo.setTapToDefine(false),
                         ),
                       ),
                     if (lookup.isOpen) _panel(context, lookup),

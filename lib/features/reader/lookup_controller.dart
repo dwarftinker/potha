@@ -106,21 +106,26 @@ class LookupController extends ChangeNotifier {
   DictionaryInfo? get info => _info;
   WordSelection? get selection => _state.selection;
 
-  /// Looks up the word at [point] (long-press, double-click, tap-to-define).
-  Future<void> lookUpAt(PagePoint point) async {
+  /// Looks up the word at [point] (long-press, double-click, tap-to-define). Returns
+  /// false if there is no word there (empty space, a number, a page without text), so a
+  /// tap can toggle the controls instead.
+  Future<bool> lookUpAt(PagePoint point, {bool reportNoText = true}) async {
     final id = ++_request;
     final text = await _pageText.get(point.page);
-    if (id != _request) return;
+    if (id != _request) return false;
     if (text == null || !text.hasText) {
-      _set(const LookupNoText());
-      _set(const LookupIdle());
-      return;
+      if (reportNoText) {
+        _set(const LookupNoText());
+        _set(const LookupIdle());
+      }
+      return false;
     }
     final index = hitTest(text, point.offset);
-    if (index == null) return; // empty space: nothing changes
+    if (index == null) return false; // empty space: nothing changes
     final selection = _extractor.wordAt(text, index, page: point.page);
-    if (selection == null) return; // a number, URL or symbol (FR-011)
+    if (selection == null) return false; // a number, URL or symbol (FR-011)
     await _resolve(id, selection, _extractor.queryFor(text, selection));
+    return true;
   }
 
   Future<void> _resolve(int id, WordSelection? selection, LookupQuery query) async {
