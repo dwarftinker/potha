@@ -24,6 +24,7 @@ class LookupPanel extends StatefulWidget {
     required this.onClose,
     this.info,
     this.onAbout,
+    this.onSearchOnline,
   });
 
   final LookupState state;
@@ -34,6 +35,7 @@ class LookupPanel extends StatefulWidget {
   final VoidCallback onClose;
   final DictionaryInfo? info;
   final VoidCallback? onAbout;
+  final VoidCallback? onSearchOnline;
 
   @override
   State<LookupPanel> createState() => _LookupPanelState();
@@ -103,6 +105,7 @@ class _LookupPanelState extends State<LookupPanel> {
           info: widget.info,
           onClose: widget.onClose,
           onAbout: widget.onAbout,
+          onSearchOnline: widget.onSearchOnline,
           // Drags on the header resize too, like the handle.
           onDrag: _drag,
           onDragEnd: _dragEnd,
@@ -168,6 +171,7 @@ class _Content extends StatelessWidget {
     required this.onDragEnd,
     this.info,
     this.onAbout,
+    this.onSearchOnline,
   });
 
   final LookupState state;
@@ -177,6 +181,7 @@ class _Content extends StatelessWidget {
   final GestureDragEndCallback onDragEnd;
   final DictionaryInfo? info;
   final VoidCallback? onAbout;
+  final VoidCallback? onSearchOnline;
 
   @override
   Widget build(BuildContext context) {
@@ -226,11 +231,13 @@ class _Content extends StatelessWidget {
     );
     final body = switch (state) {
       LookupShown(:final result) => _entries(context, result, muted),
-      LookupNotFound(:final result) => [
+      LookupNotFound(:final result, :final online) => [
         Text(
           'No definition found for “${_visible(result.phraseNotFound ?? result.query.display)}”',
           style: text.bodyLarge,
         ),
+        const SizedBox(height: 12),
+        ..._online(context, online, muted),
       ],
       LookupPreparing(:final status) => _preparing(context, status),
       LookupLoading() => [const _Waiting()],
@@ -248,10 +255,43 @@ class _Content extends StatelessWidget {
     );
   }
 
+  /// The "Search online" offer and its outcome (US6).
+  List<Widget> _online(BuildContext context, OnlineSearch online, Color muted) {
+    final text = Theme.of(context).textTheme.bodyMedium?.copyWith(color: muted);
+    Widget button(String label) => Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.travel_explore),
+        label: Text(label),
+        onPressed: onSearchOnline,
+      ),
+    );
+    return switch (online) {
+      OnlineSearch.available => [button('Search online')],
+      OnlineSearch.unavailable => [Text("Online search isn't available offline.", style: text)],
+      OnlineSearch.searching => [const LinearProgressIndicator(semanticsLabel: 'Searching online')],
+      OnlineSearch.nothingFound => [
+        Text('Nothing found online', style: text),
+        const SizedBox(height: 8),
+        button('Try again'),
+      ],
+      OnlineSearch.failed => [
+        Text("Couldn't reach Wiktionary", style: text),
+        const SizedBox(height: 8),
+        button('Try again'),
+      ],
+    };
+  }
+
   List<Widget> _entries(BuildContext context, LookupResult result, Color muted) {
     final text = Theme.of(context).textTheme;
     final first = result.sections.first.entry.headword;
     final out = <Widget>[
+      if (result.source == EntrySource.online)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 2),
+          child: Text('From Wiktionary online', style: text.bodyMedium?.copyWith(color: muted)),
+        ),
       if (result.phraseNotFound != null)
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 2),

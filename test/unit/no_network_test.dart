@@ -15,6 +15,8 @@ import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
 import 'package:potha/core/dictionary/dictionary_database.dart';
 import 'package:potha/core/dictionary/dictionary_store_io.dart';
+import 'package:potha/core/dictionary/online_dictionary.dart';
+import 'package:potha/core/platform/network_status.dart';
 import 'package:potha/features/reader/data/page_text_cache.dart';
 import 'package:potha/features/reader/data/reader_repository.dart';
 import 'package:potha/features/reader/data/thumbnail_cache.dart';
@@ -30,6 +32,13 @@ class _NoNetwork extends HttpOverrides {
     attempts.add('HttpClient');
     throw StateError('Network access is not allowed');
   }
+}
+
+class _Online implements NetworkStatus {
+  @override
+  bool get isOnline => true;
+  @override
+  Stream<bool> get changes => const Stream.empty();
 }
 
 class _Passwords implements PasswordStore {
@@ -121,8 +130,14 @@ void main() {
           final file = File('test/fixtures/lookup_prose.pdf');
           final doc = await const PdfDocumentFormat().open(BookFileRef(
               path: file.absolute.path, readAll: file.readAsBytes, sizeBytes: file.lengthSync()));
+          // A real Wikimedia client and a device that says it is online: still nothing
+          // is sent, because the reader never chose "Search online".
+          final online = WikimediaDictionary();
           final lookup = LookupController(
-              store: dictionary, pageText: PageTextCache(doc.loadPageText));
+              store: dictionary,
+              pageText: PageTextCache(doc.loadPageText),
+              network: _Online(),
+              online: online);
           final text = (await doc.loadPageText(1))!;
           PagePoint on(String word) =>
               PagePoint(1, text.charRects[text.text.indexOf(word) + 1].center);
@@ -134,7 +149,7 @@ void main() {
           expect((lookup.state as LookupShown).result.sections.map((s) => s.note),
               contains('mice – plural of mouse'));
           await lookup.lookUpAt(on('Call'));
-          expect(lookup.state, isA<LookupNotFound>());
+          expect((lookup.state as LookupNotFound).online, OnlineSearch.available);
 
           final db = AppDatabase(NativeDatabase.memory());
           final repo = ReaderRepository(db);
@@ -142,6 +157,7 @@ void main() {
           await repo.setTapToDefine(false);
 
           lookup.dispose();
+          online.close();
           await dictionary.close();
           await doc.close();
           await db.close();

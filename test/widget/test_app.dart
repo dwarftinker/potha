@@ -7,6 +7,9 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:potha/core/dictionary/dictionary_store.dart';
+import 'package:potha/core/dictionary/online_dictionary.dart';
+import 'package:potha/core/platform/network_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/app.dart';
 import 'package:potha/core/db/app_database.dart';
@@ -19,6 +22,8 @@ import 'package:potha/features/library/import/import_service.dart';
 import 'package:potha/features/library/import/import_source.dart';
 import 'package:potha/features/library/domain/text_fold.dart';
 import 'package:potha/features/library/ui/library_screen.dart';
+
+import 'reader_test_app.dart' show FakeDictionaryStore, FakeLexicon, FakeNetworkStatus, FakeOnlineDictionary;
 
 /// An ImportService whose behaviour each test scripts through [script].
 class FakeImportService extends Fake implements ImportService {
@@ -100,6 +105,9 @@ class TestApp {
     BookFileStore? fileStore,
     PasswordStore? passwordStore,
     FakeKeepAwake? keepAwake,
+    DictionaryStore? dictionaryStore,
+    NetworkStatus? network,
+    OnlineDictionary? online,
     List<Override> overrides = const [],
   })  : db = AppDatabase(NativeDatabase.memory()),
         keepAwake = keepAwake ?? FakeKeepAwake(),
@@ -116,6 +124,12 @@ class TestApp {
         pickFilesProvider.overrideWithValue(
             () async => picked?.call() ?? [fakeSource('book.pdf')]),
         if (importService != null) importServiceProvider.overrideWithValue(importService),
+        // 003: an empty dictionary, a network that says "online", and never the real
+        // Wikimedia client or connectivity plugin.
+        dictionaryStoreProvider
+            .overrideWithValue(dictionaryStore ?? FakeDictionaryStore(FakeLexicon())),
+        networkStatusProvider.overrideWithValue(network ?? FakeNetworkStatus()),
+        onlineDictionaryProvider.overrideWithValue(online ?? FakeOnlineDictionary()),
         ...overrides,
       ],
       child: const PothaApp(),

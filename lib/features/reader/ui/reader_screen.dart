@@ -9,11 +9,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/app_database.dart';
 import '../../../core/dictionary/dictionary_store.dart';
+import '../../../core/dictionary/online_dictionary.dart';
 import '../../../core/document/document_format.dart';
 import '../../../core/document/pdf/pdf_document_format.dart';
 import '../../../core/document/pdf/pdf_document_view.dart';
 import '../../../core/platform/keep_awake.dart';
 import '../../../core/platform/link_opener.dart';
+import '../../../core/platform/network_status.dart';
 import '../../../core/secure/password_store.dart';
 import '../../../core/storage/book_file_store.dart';
 import '../../library/data/library_repository.dart';
@@ -224,7 +226,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         ..addListener(_rebuild);
       final store = ref.read(dictionaryStoreProvider);
       _pageText = PageTextCache(doc.loadPageText);
-      _lookup = LookupController(store: store, pageText: _pageText!)..addListener(_lookupChanged);
+      _lookup = LookupController(
+        store: store,
+        pageText: _pageText!,
+        network: ref.read(networkStatusProvider),
+        online: ref.read(onlineDictionaryProvider),
+      )..addListener(_lookupChanged);
       // The web downloads the dictionary on the first book open (FR-022); on mobile the
       // unpack has usually finished by now.
       store.ensureStarted();
@@ -878,6 +885,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             info: _lookup!.info,
             onClose: _lookup!.close,
             onAbout: _openDictionaryAbout,
+            onSearchOnline: _lookup!.searchOnline,
           ),
         ),
       ),

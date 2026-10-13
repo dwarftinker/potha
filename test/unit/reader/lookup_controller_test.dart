@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:potha/core/dictionary/dictionary_store.dart';
 import 'package:potha/core/document/document_format.dart';
+import 'package:potha/core/platform/network_status.dart';
 import 'package:potha/features/reader/data/page_text_cache.dart';
 import 'package:potha/features/reader/lookup_controller.dart';
 
@@ -83,15 +84,47 @@ class TestStore implements DictionaryStore {
   }
 }
 
+class TestNetwork implements NetworkStatus {
+  TestNetwork(this._online);
+  bool _online;
+  final _changes = StreamController<bool>.broadcast();
+  @override
+  bool get isOnline => _online;
+  @override
+  Stream<bool> get changes => _changes.stream;
+  set online(bool v) {
+    _online = v;
+    _changes.add(v);
+  }
+}
+
+class TestOnline implements OnlineDictionary {
+  final words = <String>[];
+  OnlineResult next = const OnlineNotFound();
+  Completer<void>? hold;
+  @override
+  Future<OnlineResult> lookUp(String word) async {
+    words.add(word);
+    await hold?.future;
+    return next;
+  }
+}
+
 void main() {
   const text = 'The melancholy reader was running late. Turkey';
   late TestLexicon lexicon;
   late TestStore store;
   late Map<int, PageText?> pages;
   late LookupController c;
+  late TestNetwork network;
+  late TestOnline online;
 
-  LookupController controller() =>
-      LookupController(store: store, pageText: PageTextCache((p) async => pages[p]));
+  LookupController controller() => LookupController(
+    store: store,
+    pageText: PageTextCache((p) async => pages[p]),
+    network: network,
+    online: online,
+  );
 
   setUp(() {
     lexicon = TestLexicon({
@@ -100,6 +133,8 @@ void main() {
       'late': [e('late', 'adj')],
     });
     store = TestStore(lexicon);
+    network = TestNetwork(true);
+    online = TestOnline();
     pages = {1: line(text), 2: PageText.empty, 3: line('before \u0001\u0002\u0003 after')};
     c = controller();
   });
@@ -202,5 +237,59 @@ void main() {
     await pending;
     expect(c.state, isA<LookupIdle>());
     expect(c.selection, isNull);
+  });
+
+  group('online search (US6)', () {
+    test('not found while online offers it; searchOnline shows the online entry', () async {
+      await c.lookUpAt(at(1, text, 'running'));
+      expect((c.state as LookupNotFound).online, OnlineSearch.available);
+      expect(online.words, isEmpty, reason: 'nothing is sent without the reader asking');
+      online.next = OnlineFound([e('running', 'noun')]);
+      online.hold = Completer<void>();
+      final searching = c.searchOnline();
+      await pumpEventQueue();
+      expect((c.state as LookupNotFound).online, OnlineSearch.searching);
+      online.hold!.complete();
+      await searching;
+      final shown = c.state as LookupShown;
+      expect(shown.result.source, EntrySource.online);
+      expect(shown.result.headword, 'running');
+      expect(online.words, ['running']);
+    });
+
+    test('nothing found online, or a failure, says so', () async {
+      await c.lookUpAt(at(1, text, 'running'));
+      await c.searchOnline();
+      expect((c.state as LookupNotFound).online, OnlineSearch.nothingFound);
+      online.next = const OnlineFailed();
+      await c.lookUpAt(at(1, text, 'running'));
+      await c.searchOnline();
+      expect((c.state as LookupNotFound).online, OnlineSearch.failed);
+    });
+
+    test('offline: not available, and searchOnline does nothing', () async {
+      network.online = false;
+      await c.lookUpAt(at(1, text, 'running'));
+      expect((c.state as LookupNotFound).online, OnlineSearch.unavailable);
+      await c.searchOnline();
+      expect(online.words, isEmpty);
+    });
+
+    test('going offline or online updates the offer', () async {
+      await c.lookUpAt(at(1, text, 'running'));
+      network.online = false;
+      await pumpEventQueue();
+      expect((c.state as LookupNotFound).online, OnlineSearch.unavailable);
+      network.online = true;
+      await pumpEventQueue();
+      expect((c.state as LookupNotFound).online, OnlineSearch.available);
+    });
+
+    test('garbled text is never searched online', () async {
+      await c.lookUpAt(at(3, 'before \u0001\u0002\u0003 after', '\u0001', n: 0));
+      expect((c.state as LookupNotFound).online, OnlineSearch.unavailable);
+      await c.searchOnline();
+      expect(online.words, isEmpty);
+    });
   });
 }

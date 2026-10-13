@@ -193,6 +193,20 @@ class FakeDictionaryStore implements DictionaryStore {
   Future<void> close() => _changes.close();
 }
 
+/// Scripted online results; records each word asked for.
+class FakeOnlineDictionary implements OnlineDictionary {
+  FakeOnlineDictionary([this.result = const OnlineNotFound()]);
+
+  OnlineResult result;
+  final calls = <String>[];
+
+  @override
+  Future<OnlineResult> lookUp(String word) async {
+    calls.add(word);
+    return result;
+  }
+}
+
 class FakeNetworkStatus implements NetworkStatus {
   // ignore: prefer_initializing_formals (named parameters can't be private)
   FakeNetworkStatus({bool online = true}) : _online = online;
@@ -393,15 +407,11 @@ class _FakeViewState extends State<_FakeView> {
   }
 }
 
-/// Overrides that open every book with [doc] in a [FakeViewFactory], with a fake
-/// dictionary ([store], empty by default) and network.
-List<Override> readerOverrides(FakeReaderDocument doc, FakeViewFactory view,
-        {FakeDictionaryStore? store, FakeNetworkStatus? network}) =>
-    [
+/// Overrides that open every book with [doc] in a [FakeViewFactory].
+/// (TestApp supplies the dictionary, network and online fakes.)
+List<Override> readerOverrides(FakeReaderDocument doc, FakeViewFactory view) => [
       documentFormatsProvider.overrideWithValue([FakeFormat(doc)]),
       documentViewFactoriesProvider.overrideWithValue({'pdf': view}),
-      dictionaryStoreProvider.overrideWithValue(store ?? FakeDictionaryStore(FakeLexicon())),
-      networkStatusProvider.overrideWithValue(network ?? FakeNetworkStatus()),
     ];
 
 /// Taps the view at [fraction] of its width, at mid-height.
@@ -419,9 +429,15 @@ Future<(TestApp, FakeViewFactory)> openReader(
   Future<void> Function(TestApp app)? before,
   FakeDictionaryStore? store,
   FakeNetworkStatus? network,
+  OnlineDictionary? online,
 }) async {
   final view = FakeViewFactory();
-  final app = TestApp(overrides: readerOverrides(doc, view, store: store, network: network));
+  final app = TestApp(
+    dictionaryStore: store,
+    network: network,
+    online: online,
+    overrides: readerOverrides(doc, view),
+  );
   await app.pump(tester);
   await seedBook(tester, app.db,
       id: 'b1', title: 'Moby-Dick', pageCount: doc.pageCount, currentPage: currentPage);

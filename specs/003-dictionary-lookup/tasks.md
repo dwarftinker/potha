@@ -346,18 +346,18 @@ the web store and the interaction lock.
 
 ### Tests for User Story 6 (write first, confirm they fail) ⚠️
 
-- [ ] T065 [P] [US6] Record Wikimedia responses into test/fixtures/dictionary/: `wikimedia_serendipity.json` (found) and `wikimedia_404.json`, fetched with `curl` sending only `Api-User-Agent: Potha/dev (https://github.com/dwarftinker/potha)` and no personal data. Unit-test the parser and client in test/unit/dictionary/online_dictionary_test.dart with a `MockClient`:
+- [X] T065 [P] [US6] Record Wikimedia responses into test/fixtures/dictionary/: `wikimedia_serendipity.json` (found) and `wikimedia_404.json`, fetched with `curl` sending only `Api-User-Agent: Potha/dev (https://github.com/dwarftinker/potha)` and no personal data. Unit-test the parser and client in test/unit/dictionary/online_dictionary_test.dart with a `MockClient`:
   - the `en` section maps to entries, with HTML stripped and link text kept;
   - other languages are ignored;
   - 404 → `notFound`;
   - a timeout (8 s, fake) or error → `failed`;
   - the request URL encodes the word;
   - the `Api-User-Agent` header is present on io and holds no user data.
-- [ ] T066 [P] [US6] Extend test/unit/reader/lookup_controller_test.dart:
+- [X] T066 [P] [US6] Extend test/unit/reader/lookup_controller_test.dart:
   - not found + online → `notFound(available)`; `searchOnline()` → `searching` → `shown(source: online)`, or `notFound(failed)`;
   - not found + offline → `notFound(unavailable)`, and `searchOnline` does nothing;
   - the online client is never called without `searchOnline()`.
-- [ ] T067 [P] [US6] Widget-test in test/widget/lookup_not_found_test.dart:
+- [X] T067 [P] [US6] Widget-test in test/widget/lookup_not_found_test.dart:
   - "No definition found for "word"" with the "Search online" button when online; the result is marked "From Wiktionary online";
   - "Nothing found online" and "Couldn't reach Wiktionary" messages;
   - offline: "Online search isn't available offline" and no button;
@@ -365,9 +365,9 @@ the web store and the interaction lock.
 
 ### Implementation for User Story 6
 
-- [ ] T068 [P] [US6] Implement `OnlineDictionary` (http, Wikimedia REST definition endpoint, research R9) in lib/core/dictionary/online_dictionary.dart; make T065 pass
-- [ ] T069 [US6] Moved: `NetworkStatus` and its provider are created in T012 (analysis F1). Here, check that `networkStatusProvider` updates the panel live: going offline while "Search online" is shown replaces it with "Online search isn't available offline" (extend test/widget/lookup_not_found_test.dart)
-- [ ] T070 [US6] Add `searchOnline` and the online states to lib/features/reader/lookup_controller.dart, and the not-found and online views to lookup_panel.dart; make T066 and T067 pass
+- [X] T068 [P] [US6] Implement `OnlineDictionary` (http, Wikimedia REST definition endpoint, research R9) in lib/core/dictionary/online_dictionary.dart; make T065 pass
+- [X] T069 [US6] Moved: `NetworkStatus` and its provider are created in T012 (analysis F1). Here, check that `networkStatusProvider` updates the panel live: going offline while "Search online" is shown replaces it with "Online search isn't available offline" (extend test/widget/lookup_not_found_test.dart)
+- [X] T070 [US6] Add `searchOnline` and the online states to lib/features/reader/lookup_controller.dart, and the not-found and online views to lookup_panel.dart; make T066 and T067 pass
 
 **Checkpoint**: Not-found is never a dead end online, and nothing leaves the device without the reader's action.
 

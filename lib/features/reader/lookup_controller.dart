@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/dictionary/dictionary_store.dart';
 import '../../core/document/document_format.dart';
+import '../../core/platform/network_status.dart';
 import 'data/page_text_cache.dart';
 import 'domain/lookup_resolver.dart';
 import 'domain/word_extractor.dart';
@@ -69,12 +70,19 @@ class LookupShown extends LookupState {
   bool get isOpen => true;
 }
 
+/// Whether "Search online" is offered, and how it went (US6).
+enum OnlineSearch { available, unavailable, searching, nothingFound, failed }
+
 class LookupNotFound extends LookupState {
-  const LookupNotFound(this.selection, this.result);
+  const LookupNotFound(this.selection, this.result, {this.online = OnlineSearch.unavailable});
 
   @override
   final WordSelection? selection;
   final LookupResult result;
+  final OnlineSearch online;
+
+  LookupNotFound withOnline(OnlineSearch online) =>
+      LookupNotFound(selection, result, online: online);
 
   @override
   bool get isOpen => true;
@@ -86,14 +94,23 @@ class LookupController extends ChangeNotifier {
   LookupController({
     required DictionaryStore store,
     required PageTextCache pageText,
+    NetworkStatus? network,
+    OnlineDictionary? online,
     WordExtractor extractor = const WordExtractor(),
   }) : _store = store,
        _pageText = pageText,
-       _extractor = extractor;
+       _network = network,
+       _online = online,
+       _extractor = extractor {
+    _networkSub = network?.changes.listen((_) => _networkChanged());
+  }
 
   final DictionaryStore _store;
   final PageTextCache _pageText;
+  final NetworkStatus? _network;
+  final OnlineDictionary? _online;
   final WordExtractor _extractor;
+  StreamSubscription<bool>? _networkSub;
 
   LookupState _state = const LookupIdle();
   int _request = 0;
@@ -196,7 +213,62 @@ class LookupController extends ChangeNotifier {
     _set(LookupLoading(selection));
     final result = await LookupResolver(lexicon).resolve(query);
     if (id != _request) return;
-    _set(result.found ? LookupShown(selection, result) : LookupNotFound(selection, result));
+    _set(
+      result.found
+          ? LookupShown(selection, result)
+          : LookupNotFound(selection, result, online: _offer(result.query)),
+    );
+  }
+
+  /// "Search online" is offered when there is a client, the device is online, and the
+  /// text is readable.
+  OnlineSearch _offer(LookupQuery query) =>
+      _online != null && (_network?.isOnline ?? false) && !query.garbled
+      ? OnlineSearch.available
+      : OnlineSearch.unavailable;
+
+  void _networkChanged() {
+    final state = _state;
+    if (state is! LookupNotFound) return;
+    if (state.online == OnlineSearch.available || state.online == OnlineSearch.unavailable) {
+      final offer = _offer(state.result.query);
+      if (offer != state.online) _set(state.withOnline(offer));
+    }
+  }
+
+  /// The reader's "Search online" (FR-021): the only request that leaves the device
+  /// (FR-032). Does nothing offline.
+  Future<void> searchOnline() async {
+    final state = _state, online = _online;
+    if (state is! LookupNotFound || online == null) return;
+    if (state.online == OnlineSearch.searching || state.online == OnlineSearch.unavailable) return;
+    if (!(_network?.isOnline ?? false)) {
+      _set(state.withOnline(OnlineSearch.unavailable));
+      return;
+    }
+    final id = ++_request;
+    _set(state.withOnline(OnlineSearch.searching));
+    final query = state.result.query;
+    final word = query.candidates.isEmpty ? query.display : query.candidates.first;
+    final result = await online.lookUp(word);
+    if (id != _request) return;
+    switch (result) {
+      case OnlineFound(:final entries):
+        _set(
+          LookupShown(
+            state.selection,
+            LookupResult(
+              query,
+              sections: [for (final e in entries) ResultSection(e)],
+              source: EntrySource.online,
+            ),
+          ),
+        );
+      case OnlineNotFound():
+        _set(state.withOnline(OnlineSearch.nothingFound));
+      case OnlineFailed():
+        _set(state.withOnline(OnlineSearch.failed));
+    }
   }
 
   /// The dictionary, waiting in the preparing state if needed. Null if a newer request
@@ -235,6 +307,7 @@ class LookupController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _networkSub?.cancel();
     _disposed = true;
     _request++;
     super.dispose();
