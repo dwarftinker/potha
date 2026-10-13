@@ -27,11 +27,17 @@ pinned to a release at least two weeks old.
   size) and ≤ 90 MB on the device. The tool prints both sizes and fails above budget.
   Rules, applied in order until the budget is met:
   1. Drop senses whose only content is a form-of or alt-of link (they become word forms).
-  2. Keep a single word if it ranks in `wordfreq`'s English top *N* (start: N = 200,000),
-     or if a kept word is one of its forms. Keep a phrase (2–8 words) if every word in it
-     ranks in the top 50,000.
-  3. Keep proper nouns only within the top 100,000.
+  2. Keep a single word if it ranks in `wordfreq`'s English top *N* (N = 150,000), or if
+     a kept word is one of its forms. Keep a phrase (2–4 words) if every word in it ranks
+     in the top 20,000.
+  3. Keep proper nouns only within the top 50,000.
   4. Cap senses at 12 per part of speech, putting archaic and obsolete senses last.
+  5. Keep usage examples only (at most two per sense, ≤ 200 characters); Wiktionary's
+     dated quotations made up most of the file.
+  **Measured (T004)**: the first build (N = 200,000, phrases of up to 8 words in the
+  top 50,000, names in the top 100,000, quotations kept) was 39.6 MiB gzipped and
+  104.5 MiB on disk, over budget. Rules 2, 3 and 5 as above give 166,061 headwords,
+  23.6 MiB and 64.0 MiB.
   The chosen *N* and the measured sizes are recorded in quickstart.md. An estimate is
   150k–250k headwords.
 - **Licence**: Wiktionary text is CC BY-SA 4.0. wiktextract's code is MIT, and we ship

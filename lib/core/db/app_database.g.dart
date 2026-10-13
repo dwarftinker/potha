@@ -1752,8 +1752,44 @@ class $ReaderPreferencesTable extends ReaderPreferences
         requiredDuringInsert: false,
         defaultValue: const Constant('fitWidth'),
       ).withConverter<PageFit>($ReaderPreferencesTable.$converterfit);
+  static const VerificationMeta _tapToDefineMeta = const VerificationMeta(
+    'tapToDefine',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, theme, fit];
+  late final GeneratedColumn<bool> tapToDefine = GeneratedColumn<bool>(
+    'tap_to_define',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("tap_to_define" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lookupHintShownMeta = const VerificationMeta(
+    'lookupHintShown',
+  );
+  @override
+  late final GeneratedColumn<bool> lookupHintShown = GeneratedColumn<bool>(
+    'lookup_hint_shown',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("lookup_hint_shown" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    theme,
+    fit,
+    tapToDefine,
+    lookupHintShown,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1768,6 +1804,24 @@ class $ReaderPreferencesTable extends ReaderPreferences
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('tap_to_define')) {
+      context.handle(
+        _tapToDefineMeta,
+        tapToDefine.isAcceptableOrUnknown(
+          data['tap_to_define']!,
+          _tapToDefineMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lookup_hint_shown')) {
+      context.handle(
+        _lookupHintShownMeta,
+        lookupHintShown.isAcceptableOrUnknown(
+          data['lookup_hint_shown']!,
+          _lookupHintShownMeta,
+        ),
+      );
     }
     return context;
   }
@@ -1794,6 +1848,14 @@ class $ReaderPreferencesTable extends ReaderPreferences
           data['${effectivePrefix}fit'],
         )!,
       ),
+      tapToDefine: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}tap_to_define'],
+      )!,
+      lookupHintShown: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}lookup_hint_shown'],
+      )!,
     );
   }
 
@@ -1813,10 +1875,18 @@ class ReaderPreference extends DataClass
   final int id;
   final ReadingTheme theme;
   final PageFit fit;
+
+  /// 003 FR-015: a single tap on a word looks it up. Off by default (clarification Q2).
+  final bool tapToDefine;
+
+  /// 003 FR-006: set when the one-time lookup hint is dismissed or a lookup is made.
+  final bool lookupHintShown;
   const ReaderPreference({
     required this.id,
     required this.theme,
     required this.fit,
+    required this.tapToDefine,
+    required this.lookupHintShown,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1832,6 +1902,8 @@ class ReaderPreference extends DataClass
         $ReaderPreferencesTable.$converterfit.toSql(fit),
       );
     }
+    map['tap_to_define'] = Variable<bool>(tapToDefine);
+    map['lookup_hint_shown'] = Variable<bool>(lookupHintShown);
     return map;
   }
 
@@ -1840,6 +1912,8 @@ class ReaderPreference extends DataClass
       id: Value(id),
       theme: Value(theme),
       fit: Value(fit),
+      tapToDefine: Value(tapToDefine),
+      lookupHintShown: Value(lookupHintShown),
     );
   }
 
@@ -1856,6 +1930,8 @@ class ReaderPreference extends DataClass
       fit: $ReaderPreferencesTable.$converterfit.fromJson(
         serializer.fromJson<String>(json['fit']),
       ),
+      tapToDefine: serializer.fromJson<bool>(json['tapToDefine']),
+      lookupHintShown: serializer.fromJson<bool>(json['lookupHintShown']),
     );
   }
   @override
@@ -1869,20 +1945,35 @@ class ReaderPreference extends DataClass
       'fit': serializer.toJson<String>(
         $ReaderPreferencesTable.$converterfit.toJson(fit),
       ),
+      'tapToDefine': serializer.toJson<bool>(tapToDefine),
+      'lookupHintShown': serializer.toJson<bool>(lookupHintShown),
     };
   }
 
-  ReaderPreference copyWith({int? id, ReadingTheme? theme, PageFit? fit}) =>
-      ReaderPreference(
-        id: id ?? this.id,
-        theme: theme ?? this.theme,
-        fit: fit ?? this.fit,
-      );
+  ReaderPreference copyWith({
+    int? id,
+    ReadingTheme? theme,
+    PageFit? fit,
+    bool? tapToDefine,
+    bool? lookupHintShown,
+  }) => ReaderPreference(
+    id: id ?? this.id,
+    theme: theme ?? this.theme,
+    fit: fit ?? this.fit,
+    tapToDefine: tapToDefine ?? this.tapToDefine,
+    lookupHintShown: lookupHintShown ?? this.lookupHintShown,
+  );
   ReaderPreference copyWithCompanion(ReaderPreferencesCompanion data) {
     return ReaderPreference(
       id: data.id.present ? data.id.value : this.id,
       theme: data.theme.present ? data.theme.value : this.theme,
       fit: data.fit.present ? data.fit.value : this.fit,
+      tapToDefine: data.tapToDefine.present
+          ? data.tapToDefine.value
+          : this.tapToDefine,
+      lookupHintShown: data.lookupHintShown.present
+          ? data.lookupHintShown.value
+          : this.lookupHintShown,
     );
   }
 
@@ -1891,45 +1982,59 @@ class ReaderPreference extends DataClass
     return (StringBuffer('ReaderPreference(')
           ..write('id: $id, ')
           ..write('theme: $theme, ')
-          ..write('fit: $fit')
+          ..write('fit: $fit, ')
+          ..write('tapToDefine: $tapToDefine, ')
+          ..write('lookupHintShown: $lookupHintShown')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, theme, fit);
+  int get hashCode => Object.hash(id, theme, fit, tapToDefine, lookupHintShown);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ReaderPreference &&
           other.id == this.id &&
           other.theme == this.theme &&
-          other.fit == this.fit);
+          other.fit == this.fit &&
+          other.tapToDefine == this.tapToDefine &&
+          other.lookupHintShown == this.lookupHintShown);
 }
 
 class ReaderPreferencesCompanion extends UpdateCompanion<ReaderPreference> {
   final Value<int> id;
   final Value<ReadingTheme> theme;
   final Value<PageFit> fit;
+  final Value<bool> tapToDefine;
+  final Value<bool> lookupHintShown;
   const ReaderPreferencesCompanion({
     this.id = const Value.absent(),
     this.theme = const Value.absent(),
     this.fit = const Value.absent(),
+    this.tapToDefine = const Value.absent(),
+    this.lookupHintShown = const Value.absent(),
   });
   ReaderPreferencesCompanion.insert({
     this.id = const Value.absent(),
     this.theme = const Value.absent(),
     this.fit = const Value.absent(),
+    this.tapToDefine = const Value.absent(),
+    this.lookupHintShown = const Value.absent(),
   });
   static Insertable<ReaderPreference> custom({
     Expression<int>? id,
     Expression<String>? theme,
     Expression<String>? fit,
+    Expression<bool>? tapToDefine,
+    Expression<bool>? lookupHintShown,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (theme != null) 'theme': theme,
       if (fit != null) 'fit': fit,
+      if (tapToDefine != null) 'tap_to_define': tapToDefine,
+      if (lookupHintShown != null) 'lookup_hint_shown': lookupHintShown,
     });
   }
 
@@ -1937,11 +2042,15 @@ class ReaderPreferencesCompanion extends UpdateCompanion<ReaderPreference> {
     Value<int>? id,
     Value<ReadingTheme>? theme,
     Value<PageFit>? fit,
+    Value<bool>? tapToDefine,
+    Value<bool>? lookupHintShown,
   }) {
     return ReaderPreferencesCompanion(
       id: id ?? this.id,
       theme: theme ?? this.theme,
       fit: fit ?? this.fit,
+      tapToDefine: tapToDefine ?? this.tapToDefine,
+      lookupHintShown: lookupHintShown ?? this.lookupHintShown,
     );
   }
 
@@ -1961,6 +2070,12 @@ class ReaderPreferencesCompanion extends UpdateCompanion<ReaderPreference> {
         $ReaderPreferencesTable.$converterfit.toSql(fit.value),
       );
     }
+    if (tapToDefine.present) {
+      map['tap_to_define'] = Variable<bool>(tapToDefine.value);
+    }
+    if (lookupHintShown.present) {
+      map['lookup_hint_shown'] = Variable<bool>(lookupHintShown.value);
+    }
     return map;
   }
 
@@ -1969,7 +2084,541 @@ class ReaderPreferencesCompanion extends UpdateCompanion<ReaderPreference> {
     return (StringBuffer('ReaderPreferencesCompanion(')
           ..write('id: $id, ')
           ..write('theme: $theme, ')
-          ..write('fit: $fit')
+          ..write('fit: $fit, ')
+          ..write('tapToDefine: $tapToDefine, ')
+          ..write('lookupHintShown: $lookupHintShown')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LookupHistoryTable extends LookupHistory
+    with TableInfo<$LookupHistoryTable, LookupHistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LookupHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _bookIdMeta = const VerificationMeta('bookId');
+  @override
+  late final GeneratedColumn<String> bookId = GeneratedColumn<String>(
+    'book_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES books (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _wordKeyMeta = const VerificationMeta(
+    'wordKey',
+  );
+  @override
+  late final GeneratedColumn<String> wordKey = GeneratedColumn<String>(
+    'word_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wordMeta = const VerificationMeta('word');
+  @override
+  late final GeneratedColumn<String> word = GeneratedColumn<String>(
+    'word',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _headwordMeta = const VerificationMeta(
+    'headword',
+  );
+  @override
+  late final GeneratedColumn<String> headword = GeneratedColumn<String>(
+    'headword',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<LookupSource, String> source =
+      GeneratedColumn<String>(
+        'source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<LookupSource>($LookupHistoryTable.$convertersource);
+  static const VerificationMeta _pageMeta = const VerificationMeta('page');
+  @override
+  late final GeneratedColumn<int> page = GeneratedColumn<int>(
+    'page',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(page).isBiggerOrEqualValue(1),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lookedUpAtMeta = const VerificationMeta(
+    'lookedUpAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lookedUpAt = GeneratedColumn<DateTime>(
+    'looked_up_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countMeta = const VerificationMeta('count');
+  @override
+  late final GeneratedColumn<int> count = GeneratedColumn<int>(
+    'count',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(count).isBiggerOrEqualValue(1),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    bookId,
+    wordKey,
+    word,
+    headword,
+    source,
+    page,
+    lookedUpAt,
+    count,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lookup_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LookupHistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('book_id')) {
+      context.handle(
+        _bookIdMeta,
+        bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bookIdMeta);
+    }
+    if (data.containsKey('word_key')) {
+      context.handle(
+        _wordKeyMeta,
+        wordKey.isAcceptableOrUnknown(data['word_key']!, _wordKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordKeyMeta);
+    }
+    if (data.containsKey('word')) {
+      context.handle(
+        _wordMeta,
+        word.isAcceptableOrUnknown(data['word']!, _wordMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordMeta);
+    }
+    if (data.containsKey('headword')) {
+      context.handle(
+        _headwordMeta,
+        headword.isAcceptableOrUnknown(data['headword']!, _headwordMeta),
+      );
+    }
+    if (data.containsKey('page')) {
+      context.handle(
+        _pageMeta,
+        page.isAcceptableOrUnknown(data['page']!, _pageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageMeta);
+    }
+    if (data.containsKey('looked_up_at')) {
+      context.handle(
+        _lookedUpAtMeta,
+        lookedUpAt.isAcceptableOrUnknown(
+          data['looked_up_at']!,
+          _lookedUpAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lookedUpAtMeta);
+    }
+    if (data.containsKey('count')) {
+      context.handle(
+        _countMeta,
+        count.isAcceptableOrUnknown(data['count']!, _countMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {bookId, wordKey};
+  @override
+  LookupHistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LookupHistoryData(
+      bookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}book_id'],
+      )!,
+      wordKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}word_key'],
+      )!,
+      word: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}word'],
+      )!,
+      headword: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}headword'],
+      ),
+      source: $LookupHistoryTable.$convertersource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source'],
+        )!,
+      ),
+      page: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}page'],
+      )!,
+      lookedUpAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}looked_up_at'],
+      )!,
+      count: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}count'],
+      )!,
+    );
+  }
+
+  @override
+  $LookupHistoryTable createAlias(String alias) {
+    return $LookupHistoryTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<LookupSource, String, String> $convertersource =
+      const EnumNameConverter<LookupSource>(LookupSource.values);
+}
+
+class LookupHistoryData extends DataClass
+    implements Insertable<LookupHistoryData> {
+  final String bookId;
+
+  /// The normalised lookup key (research R5).
+  final String wordKey;
+
+  /// As the reader saw it, from the latest lookup ("Running").
+  final String word;
+
+  /// The first entry shown ("run"); null if not found.
+  final String? headword;
+  final LookupSource source;
+  final int page;
+
+  /// UTC; history is ordered by this, newest first.
+  final DateTime lookedUpAt;
+  final int count;
+  const LookupHistoryData({
+    required this.bookId,
+    required this.wordKey,
+    required this.word,
+    this.headword,
+    required this.source,
+    required this.page,
+    required this.lookedUpAt,
+    required this.count,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['book_id'] = Variable<String>(bookId);
+    map['word_key'] = Variable<String>(wordKey);
+    map['word'] = Variable<String>(word);
+    if (!nullToAbsent || headword != null) {
+      map['headword'] = Variable<String>(headword);
+    }
+    {
+      map['source'] = Variable<String>(
+        $LookupHistoryTable.$convertersource.toSql(source),
+      );
+    }
+    map['page'] = Variable<int>(page);
+    map['looked_up_at'] = Variable<DateTime>(lookedUpAt);
+    map['count'] = Variable<int>(count);
+    return map;
+  }
+
+  LookupHistoryCompanion toCompanion(bool nullToAbsent) {
+    return LookupHistoryCompanion(
+      bookId: Value(bookId),
+      wordKey: Value(wordKey),
+      word: Value(word),
+      headword: headword == null && nullToAbsent
+          ? const Value.absent()
+          : Value(headword),
+      source: Value(source),
+      page: Value(page),
+      lookedUpAt: Value(lookedUpAt),
+      count: Value(count),
+    );
+  }
+
+  factory LookupHistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LookupHistoryData(
+      bookId: serializer.fromJson<String>(json['bookId']),
+      wordKey: serializer.fromJson<String>(json['wordKey']),
+      word: serializer.fromJson<String>(json['word']),
+      headword: serializer.fromJson<String?>(json['headword']),
+      source: $LookupHistoryTable.$convertersource.fromJson(
+        serializer.fromJson<String>(json['source']),
+      ),
+      page: serializer.fromJson<int>(json['page']),
+      lookedUpAt: serializer.fromJson<DateTime>(json['lookedUpAt']),
+      count: serializer.fromJson<int>(json['count']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'bookId': serializer.toJson<String>(bookId),
+      'wordKey': serializer.toJson<String>(wordKey),
+      'word': serializer.toJson<String>(word),
+      'headword': serializer.toJson<String?>(headword),
+      'source': serializer.toJson<String>(
+        $LookupHistoryTable.$convertersource.toJson(source),
+      ),
+      'page': serializer.toJson<int>(page),
+      'lookedUpAt': serializer.toJson<DateTime>(lookedUpAt),
+      'count': serializer.toJson<int>(count),
+    };
+  }
+
+  LookupHistoryData copyWith({
+    String? bookId,
+    String? wordKey,
+    String? word,
+    Value<String?> headword = const Value.absent(),
+    LookupSource? source,
+    int? page,
+    DateTime? lookedUpAt,
+    int? count,
+  }) => LookupHistoryData(
+    bookId: bookId ?? this.bookId,
+    wordKey: wordKey ?? this.wordKey,
+    word: word ?? this.word,
+    headword: headword.present ? headword.value : this.headword,
+    source: source ?? this.source,
+    page: page ?? this.page,
+    lookedUpAt: lookedUpAt ?? this.lookedUpAt,
+    count: count ?? this.count,
+  );
+  LookupHistoryData copyWithCompanion(LookupHistoryCompanion data) {
+    return LookupHistoryData(
+      bookId: data.bookId.present ? data.bookId.value : this.bookId,
+      wordKey: data.wordKey.present ? data.wordKey.value : this.wordKey,
+      word: data.word.present ? data.word.value : this.word,
+      headword: data.headword.present ? data.headword.value : this.headword,
+      source: data.source.present ? data.source.value : this.source,
+      page: data.page.present ? data.page.value : this.page,
+      lookedUpAt: data.lookedUpAt.present
+          ? data.lookedUpAt.value
+          : this.lookedUpAt,
+      count: data.count.present ? data.count.value : this.count,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupHistoryData(')
+          ..write('bookId: $bookId, ')
+          ..write('wordKey: $wordKey, ')
+          ..write('word: $word, ')
+          ..write('headword: $headword, ')
+          ..write('source: $source, ')
+          ..write('page: $page, ')
+          ..write('lookedUpAt: $lookedUpAt, ')
+          ..write('count: $count')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    bookId,
+    wordKey,
+    word,
+    headword,
+    source,
+    page,
+    lookedUpAt,
+    count,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LookupHistoryData &&
+          other.bookId == this.bookId &&
+          other.wordKey == this.wordKey &&
+          other.word == this.word &&
+          other.headword == this.headword &&
+          other.source == this.source &&
+          other.page == this.page &&
+          other.lookedUpAt == this.lookedUpAt &&
+          other.count == this.count);
+}
+
+class LookupHistoryCompanion extends UpdateCompanion<LookupHistoryData> {
+  final Value<String> bookId;
+  final Value<String> wordKey;
+  final Value<String> word;
+  final Value<String?> headword;
+  final Value<LookupSource> source;
+  final Value<int> page;
+  final Value<DateTime> lookedUpAt;
+  final Value<int> count;
+  final Value<int> rowid;
+  const LookupHistoryCompanion({
+    this.bookId = const Value.absent(),
+    this.wordKey = const Value.absent(),
+    this.word = const Value.absent(),
+    this.headword = const Value.absent(),
+    this.source = const Value.absent(),
+    this.page = const Value.absent(),
+    this.lookedUpAt = const Value.absent(),
+    this.count = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LookupHistoryCompanion.insert({
+    required String bookId,
+    required String wordKey,
+    required String word,
+    this.headword = const Value.absent(),
+    required LookupSource source,
+    required int page,
+    required DateTime lookedUpAt,
+    this.count = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : bookId = Value(bookId),
+       wordKey = Value(wordKey),
+       word = Value(word),
+       source = Value(source),
+       page = Value(page),
+       lookedUpAt = Value(lookedUpAt);
+  static Insertable<LookupHistoryData> custom({
+    Expression<String>? bookId,
+    Expression<String>? wordKey,
+    Expression<String>? word,
+    Expression<String>? headword,
+    Expression<String>? source,
+    Expression<int>? page,
+    Expression<DateTime>? lookedUpAt,
+    Expression<int>? count,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (bookId != null) 'book_id': bookId,
+      if (wordKey != null) 'word_key': wordKey,
+      if (word != null) 'word': word,
+      if (headword != null) 'headword': headword,
+      if (source != null) 'source': source,
+      if (page != null) 'page': page,
+      if (lookedUpAt != null) 'looked_up_at': lookedUpAt,
+      if (count != null) 'count': count,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LookupHistoryCompanion copyWith({
+    Value<String>? bookId,
+    Value<String>? wordKey,
+    Value<String>? word,
+    Value<String?>? headword,
+    Value<LookupSource>? source,
+    Value<int>? page,
+    Value<DateTime>? lookedUpAt,
+    Value<int>? count,
+    Value<int>? rowid,
+  }) {
+    return LookupHistoryCompanion(
+      bookId: bookId ?? this.bookId,
+      wordKey: wordKey ?? this.wordKey,
+      word: word ?? this.word,
+      headword: headword ?? this.headword,
+      source: source ?? this.source,
+      page: page ?? this.page,
+      lookedUpAt: lookedUpAt ?? this.lookedUpAt,
+      count: count ?? this.count,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (bookId.present) {
+      map['book_id'] = Variable<String>(bookId.value);
+    }
+    if (wordKey.present) {
+      map['word_key'] = Variable<String>(wordKey.value);
+    }
+    if (word.present) {
+      map['word'] = Variable<String>(word.value);
+    }
+    if (headword.present) {
+      map['headword'] = Variable<String>(headword.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(
+        $LookupHistoryTable.$convertersource.toSql(source.value),
+      );
+    }
+    if (page.present) {
+      map['page'] = Variable<int>(page.value);
+    }
+    if (lookedUpAt.present) {
+      map['looked_up_at'] = Variable<DateTime>(lookedUpAt.value);
+    }
+    if (count.present) {
+      map['count'] = Variable<int>(count.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupHistoryCompanion(')
+          ..write('bookId: $bookId, ')
+          ..write('wordKey: $wordKey, ')
+          ..write('word: $word, ')
+          ..write('headword: $headword, ')
+          ..write('source: $source, ')
+          ..write('page: $page, ')
+          ..write('lookedUpAt: $lookedUpAt, ')
+          ..write('count: $count, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1987,6 +2636,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LibraryPreferencesTable(this);
   late final $ReaderPreferencesTable readerPreferences =
       $ReaderPreferencesTable(this);
+  late final $LookupHistoryTable lookupHistory = $LookupHistoryTable(this);
   late final Index booksLastOpenedAt = Index(
     'books_last_opened_at',
     'CREATE INDEX books_last_opened_at ON books (last_opened_at)',
@@ -1999,6 +2649,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'books_sort_title',
     'CREATE INDEX books_sort_title ON books (sort_title)',
   );
+  late final Index lookupHistoryLookedUpAt = Index(
+    'lookup_history_looked_up_at',
+    'CREATE INDEX lookup_history_looked_up_at ON lookup_history (looked_up_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2009,9 +2663,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     readingProgress,
     libraryPreferences,
     readerPreferences,
+    lookupHistory,
     booksLastOpenedAt,
     booksAddedAt,
     booksSortTitle,
+    lookupHistoryLookedUpAt,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2028,6 +2684,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('reading_progress', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'books',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('lookup_history', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2102,6 +2765,24 @@ final class $$BooksTableReferences
     final cache = $_typedResult.readTableOrNull(
       _readingProgressRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$LookupHistoryTable, List<LookupHistoryData>>
+  _lookupHistoryRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.lookupHistory,
+    aliasName: 'books__id__lookup_history__book_id',
+  );
+
+  $$LookupHistoryTableProcessedTableManager get lookupHistoryRefs {
+    final manager = $$LookupHistoryTableTableManager(
+      $_db,
+      $_db.lookupHistory,
+    ).filter((f) => f.bookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_lookupHistoryRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -2222,6 +2903,31 @@ class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
           }) => $$ReadingProgressTableFilterComposer(
             $db: $db,
             $table: $db.readingProgress,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> lookupHistoryRefs(
+    Expression<bool> Function($$LookupHistoryTableFilterComposer f) f,
+  ) {
+    final $$LookupHistoryTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.lookupHistory,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LookupHistoryTableFilterComposer(
+            $db: $db,
+            $table: $db.lookupHistory,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2412,6 +3118,31 @@ class $$BooksTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> lookupHistoryRefs<T extends Object>(
+    Expression<T> Function($$LookupHistoryTableAnnotationComposer a) f,
+  ) {
+    final $$LookupHistoryTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.lookupHistory,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LookupHistoryTableAnnotationComposer(
+            $db: $db,
+            $table: $db.lookupHistory,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$BooksTableTableManager
@@ -2430,6 +3161,7 @@ class $$BooksTableTableManager
           PrefetchHooks Function({
             bool bookCoversRefs,
             bool readingProgressRefs,
+            bool lookupHistoryRefs,
           })
         > {
   $$BooksTableTableManager(_$AppDatabase db, $BooksTable table)
@@ -2516,12 +3248,17 @@ class $$BooksTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({bookCoversRefs = false, readingProgressRefs = false}) {
+              ({
+                bookCoversRefs = false,
+                readingProgressRefs = false,
+                lookupHistoryRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (bookCoversRefs) db.bookCovers,
                     if (readingProgressRefs) db.readingProgress,
+                    if (lookupHistoryRefs) db.lookupHistory,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -2564,6 +3301,27 @@ class $$BooksTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (lookupHistoryRefs)
+                        await $_getPrefetchedData<
+                          Book,
+                          $BooksTable,
+                          LookupHistoryData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$BooksTableReferences
+                              ._lookupHistoryRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$BooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).lookupHistoryRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.bookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -2584,7 +3342,11 @@ typedef $$BooksTableProcessedTableManager =
       $$BooksTableUpdateCompanionBuilder,
       (Book, $$BooksTableReferences),
       Book,
-      PrefetchHooks Function({bool bookCoversRefs, bool readingProgressRefs})
+      PrefetchHooks Function({
+        bool bookCoversRefs,
+        bool readingProgressRefs,
+        bool lookupHistoryRefs,
+      })
     >;
 typedef $$BookCoversTableCreateCompanionBuilder = BookCoversCompanion Function({
   required String bookId,
@@ -3378,12 +4140,16 @@ typedef $$ReaderPreferencesTableCreateCompanionBuilder =
       Value<int> id,
       Value<ReadingTheme> theme,
       Value<PageFit> fit,
+      Value<bool> tapToDefine,
+      Value<bool> lookupHintShown,
     });
 typedef $$ReaderPreferencesTableUpdateCompanionBuilder =
     ReaderPreferencesCompanion Function({
       Value<int> id,
       Value<ReadingTheme> theme,
       Value<PageFit> fit,
+      Value<bool> tapToDefine,
+      Value<bool> lookupHintShown,
     });
 
 class $$ReaderPreferencesTableFilterComposer
@@ -3411,6 +4177,16 @@ class $$ReaderPreferencesTableFilterComposer
         column: $table.fit,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<bool> get tapToDefine => $composableBuilder(
+    column: $table.tapToDefine,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get lookupHintShown => $composableBuilder(
+    column: $table.lookupHintShown,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$ReaderPreferencesTableOrderingComposer
@@ -3436,6 +4212,16 @@ class $$ReaderPreferencesTableOrderingComposer
     column: $table.fit,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get tapToDefine => $composableBuilder(
+    column: $table.tapToDefine,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get lookupHintShown => $composableBuilder(
+    column: $table.lookupHintShown,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ReaderPreferencesTableAnnotationComposer
@@ -3455,6 +4241,16 @@ class $$ReaderPreferencesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<PageFit, String> get fit =>
       $composableBuilder(column: $table.fit, builder: (column) => column);
+
+  GeneratedColumn<bool> get tapToDefine => $composableBuilder(
+    column: $table.tapToDefine,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get lookupHintShown => $composableBuilder(
+    column: $table.lookupHintShown,
+    builder: (column) => column,
+  );
 }
 
 class $$ReaderPreferencesTableTableManager
@@ -3495,20 +4291,33 @@ class $$ReaderPreferencesTableTableManager
                 $db: db,
                 $table: table,
               ),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<ReadingTheme> theme = const Value.absent(),
-            Value<PageFit> fit = const Value.absent(),
-          }) => ReaderPreferencesCompanion(id: id, theme: theme, fit: fit),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<ReadingTheme> theme = const Value.absent(),
+                Value<PageFit> fit = const Value.absent(),
+                Value<bool> tapToDefine = const Value.absent(),
+                Value<bool> lookupHintShown = const Value.absent(),
+              }) => ReaderPreferencesCompanion(
+                id: id,
+                theme: theme,
+                fit: fit,
+                tapToDefine: tapToDefine,
+                lookupHintShown: lookupHintShown,
+              ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<ReadingTheme> theme = const Value.absent(),
                 Value<PageFit> fit = const Value.absent(),
+                Value<bool> tapToDefine = const Value.absent(),
+                Value<bool> lookupHintShown = const Value.absent(),
               }) => ReaderPreferencesCompanion.insert(
                 id: id,
                 theme: theme,
                 fit: fit,
+                tapToDefine: tapToDefine,
+                lookupHintShown: lookupHintShown,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3548,6 +4357,386 @@ typedef $$ReaderPreferencesTableProcessedTableManager =
       ReaderPreference,
       PrefetchHooks Function()
     >;
+typedef $$LookupHistoryTableCreateCompanionBuilder =
+    LookupHistoryCompanion Function({
+      required String bookId,
+      required String wordKey,
+      required String word,
+      Value<String?> headword,
+      required LookupSource source,
+      required int page,
+      required DateTime lookedUpAt,
+      Value<int> count,
+      Value<int> rowid,
+    });
+typedef $$LookupHistoryTableUpdateCompanionBuilder =
+    LookupHistoryCompanion Function({
+      Value<String> bookId,
+      Value<String> wordKey,
+      Value<String> word,
+      Value<String?> headword,
+      Value<LookupSource> source,
+      Value<int> page,
+      Value<DateTime> lookedUpAt,
+      Value<int> count,
+      Value<int> rowid,
+    });
+
+final class $$LookupHistoryTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $LookupHistoryTable, LookupHistoryData> {
+  $$LookupHistoryTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $BooksTable _bookIdTable(_$AppDatabase db) =>
+      db.books.createAlias('lookup_history__book_id__books__id');
+
+  $$BooksTableProcessedTableManager get bookId {
+    final $_column = $_itemColumn<String>('book_id')!;
+
+    final manager = $$BooksTableTableManager(
+      $_db,
+      $_db.books,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LookupHistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $LookupHistoryTable> {
+  $$LookupHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get wordKey => $composableBuilder(
+    column: $table.wordKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get word => $composableBuilder(
+    column: $table.word,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get headword => $composableBuilder(
+    column: $table.headword,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<LookupSource, LookupSource, String>
+  get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get page => $composableBuilder(
+    column: $table.page,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lookedUpAt => $composableBuilder(
+    column: $table.lookedUpAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get count => $composableBuilder(
+    column: $table.count,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$BooksTableFilterComposer get bookId {
+    final $$BooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.books,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BooksTableFilterComposer(
+            $db: $db,
+            $table: $db.books,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LookupHistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $LookupHistoryTable> {
+  $$LookupHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get wordKey => $composableBuilder(
+    column: $table.wordKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get word => $composableBuilder(
+    column: $table.word,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get headword => $composableBuilder(
+    column: $table.headword,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get page => $composableBuilder(
+    column: $table.page,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lookedUpAt => $composableBuilder(
+    column: $table.lookedUpAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get count => $composableBuilder(
+    column: $table.count,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$BooksTableOrderingComposer get bookId {
+    final $$BooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.books,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.books,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LookupHistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LookupHistoryTable> {
+  $$LookupHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get wordKey =>
+      $composableBuilder(column: $table.wordKey, builder: (column) => column);
+
+  GeneratedColumn<String> get word =>
+      $composableBuilder(column: $table.word, builder: (column) => column);
+
+  GeneratedColumn<String> get headword =>
+      $composableBuilder(column: $table.headword, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<LookupSource, String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get page =>
+      $composableBuilder(column: $table.page, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lookedUpAt => $composableBuilder(
+    column: $table.lookedUpAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get count =>
+      $composableBuilder(column: $table.count, builder: (column) => column);
+
+  $$BooksTableAnnotationComposer get bookId {
+    final $$BooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.books,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.books,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LookupHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LookupHistoryTable,
+          LookupHistoryData,
+          $$LookupHistoryTableFilterComposer,
+          $$LookupHistoryTableOrderingComposer,
+          $$LookupHistoryTableAnnotationComposer,
+          $$LookupHistoryTableCreateCompanionBuilder,
+          $$LookupHistoryTableUpdateCompanionBuilder,
+          (LookupHistoryData, $$LookupHistoryTableReferences),
+          LookupHistoryData,
+          PrefetchHooks Function({bool bookId})
+        > {
+  $$LookupHistoryTableTableManager(_$AppDatabase db, $LookupHistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LookupHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LookupHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LookupHistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> bookId = const Value.absent(),
+                Value<String> wordKey = const Value.absent(),
+                Value<String> word = const Value.absent(),
+                Value<String?> headword = const Value.absent(),
+                Value<LookupSource> source = const Value.absent(),
+                Value<int> page = const Value.absent(),
+                Value<DateTime> lookedUpAt = const Value.absent(),
+                Value<int> count = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LookupHistoryCompanion(
+                bookId: bookId,
+                wordKey: wordKey,
+                word: word,
+                headword: headword,
+                source: source,
+                page: page,
+                lookedUpAt: lookedUpAt,
+                count: count,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String bookId,
+                required String wordKey,
+                required String word,
+                Value<String?> headword = const Value.absent(),
+                required LookupSource source,
+                required int page,
+                required DateTime lookedUpAt,
+                Value<int> count = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LookupHistoryCompanion.insert(
+                bookId: bookId,
+                wordKey: wordKey,
+                word: word,
+                headword: headword,
+                source: source,
+                page: page,
+                lookedUpAt: lookedUpAt,
+                count: count,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LookupHistoryTable, LookupHistoryData>(table),
+                  $$LookupHistoryTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({bookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (bookId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.bookId,
+                        referencedTable: $$LookupHistoryTableReferences
+                            ._bookIdTable(db),
+                        referencedColumn: $$LookupHistoryTableReferences
+                            ._bookIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LookupHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LookupHistoryTable,
+      LookupHistoryData,
+      $$LookupHistoryTableFilterComposer,
+      $$LookupHistoryTableOrderingComposer,
+      $$LookupHistoryTableAnnotationComposer,
+      $$LookupHistoryTableCreateCompanionBuilder,
+      $$LookupHistoryTableUpdateCompanionBuilder,
+      (LookupHistoryData, $$LookupHistoryTableReferences),
+      LookupHistoryData,
+      PrefetchHooks Function({bool bookId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3562,4 +4751,6 @@ class $AppDatabaseManager {
       $$LibraryPreferencesTableTableManager(_db, _db.libraryPreferences);
   $$ReaderPreferencesTableTableManager get readerPreferences =>
       $$ReaderPreferencesTableTableManager(_db, _db.readerPreferences);
+  $$LookupHistoryTableTableManager get lookupHistory =>
+      $$LookupHistoryTableTableManager(_db, _db.lookupHistory);
 }

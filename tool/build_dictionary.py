@@ -14,9 +14,11 @@ Wiktionary text is CC BY-SA 4.0, so the built file is too; LICENSE.md is written
 it (research R1, FR-034).
 
 Usage:
-  python3 tool/build_dictionary.py --download           full build -> assets/dictionary/
+  python3 tool/build_dictionary.py --download           full build (--top N, default 150000) -> assets/dictionary/
   python3 tool/build_dictionary.py --input FILE         full build from a .jsonl[.gz]
   python3 tool/build_dictionary.py --sample             tests -> build/fixtures/dict_sample.sqlite
+                                                        and test/fixtures/dictionary/
+                                                        dict_sample.sqlite.gz (web tests)
   python3 tool/build_dictionary.py --sample --as-asset  also install the sample as the app
                                                         asset (development without the
                                                         full download)
@@ -54,16 +56,18 @@ BUILD_DIR = ROOT / 'build' / 'dictionary'
 ASSET_DIR = ROOT / 'assets' / 'dictionary'
 SAMPLE_JSONL = ROOT / 'test' / 'fixtures' / 'dictionary' / 'sample.jsonl'
 SAMPLE_DB = ROOT / 'build' / 'fixtures' / 'dict_sample.sqlite'
+# Committed: the web tests can only fetch files under test/.
+SAMPLE_GZ = ROOT / 'test' / 'fixtures' / 'dictionary' / 'dict_sample.sqlite.gz'
 KEY_VECTORS = ROOT / 'test' / 'fixtures' / 'dictionary' / 'key_vectors.tsv'
 
 MAX_GZIP = 25 * 1024 * 1024
 MAX_DISK = 90 * 1024 * 1024
 MAX_SENSES = 12
 MAX_EXAMPLES = 2
-MAX_EXAMPLE_CHARS = 240
-PHRASE_TOP = 50000
-NAME_TOP = 100000
-MAX_PHRASE_WORDS = 8
+MAX_EXAMPLE_CHARS = 200
+PHRASE_TOP = 20000
+NAME_TOP = 50000
+MAX_PHRASE_WORDS = 4
 
 # Parts of speech that aren't dictionary words for a reader.
 SKIP_POS = {'romanization', 'character', 'symbol', 'punct', 'soft-redirect', 'hard-redirect'}
@@ -151,13 +155,11 @@ def pick_ipa(sounds):
 
 
 def pick_examples(sense):
-    examples = sense.get('examples') or ()
-    plain = [e for e in examples if e.get('type') == 'example']
-    others = [e for e in examples if e.get('type') != 'example']
+    """Usage examples only: dated quotations are long and make up most of the size."""
     out = []
-    for e in plain + others:
+    for e in sense.get('examples') or ():
         text = (e.get('text') or '').strip()
-        if text and len(text) <= MAX_EXAMPLE_CHARS:
+        if e.get('type') == 'example' and text and len(text) <= MAX_EXAMPLE_CHARS:
             out.append(text)
         if len(out) == MAX_EXAMPLES:
             break
@@ -337,6 +339,9 @@ def write_output(db, out_path, kept, trim, meta):
     ''')
     meta = dict(meta, headwords=str(len(entry_keys)))
     out.executemany('INSERT INTO meta VALUES (?,?)', sorted(meta.items()))
+    # drift treats user_version 0 as a new database and would try to create it; the app
+    # opens this file read-only at schema version 1.
+    out.execute('PRAGMA user_version = 1')
     out.commit()
     out.execute('VACUUM')
     out.close()
@@ -362,8 +367,9 @@ def build(lines, out_path, *, top, trim, dump_date, build_number):
         'dump_date': dump_date,
         'licence': 'CC BY-SA 4.0',
         'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0/',
-        'built_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
+    if trim:  # left out of the sample so its committed gzip is reproducible
+        meta['built_at'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     print('Pass 2: writing', out_path, flush=True)
     keys, rows, forms = write_output(db, out_path, kept, trim, meta)
     db.close()
@@ -386,8 +392,9 @@ def install_asset(db_path, version, dump_date):
                                           encoding='utf-8')
     disk = db_path.stat().st_size
     packed = gz.stat().st_size
-    print(f'Size: {packed / 1e6:.1f} MB gzipped (limit {MAX_GZIP / 1e6:.0f}), '
-          f'{disk / 1e6:.1f} MB on the device (limit {MAX_DISK / 1e6:.0f})')
+    mib = 1024 * 1024
+    print(f'Size: {packed / mib:.1f} MiB gzipped (limit {MAX_GZIP // mib}), '
+          f'{disk / mib:.1f} MiB on the device (limit {MAX_DISK // mib})')
     return packed <= MAX_GZIP and disk <= MAX_DISK
 
 
@@ -509,7 +516,7 @@ def main():
     p.add_argument('--as-asset', action='store_true')
     p.add_argument('--fetch-sample', metavar='WORDS_TXT')
     p.add_argument('--check', action='store_true')
-    p.add_argument('--top', type=int, default=200000)
+    p.add_argument('--top', type=int, default=150000)
     p.add_argument('--dump-date', default=DEFAULT_DUMP_DATE)
     p.add_argument('--build-number', type=int, default=1)
     args = p.parse_args()
@@ -525,6 +532,7 @@ def main():
         with open_lines(SAMPLE_JSONL) as lines:
             version = build(lines, SAMPLE_DB, top=args.top, trim=False,
                             dump_date=args.dump_date, build_number=0)
+        gzip_file(SAMPLE_DB, SAMPLE_GZ)
         if args.as_asset:
             install_asset(SAMPLE_DB, version, args.dump_date)
             print('Installed the SAMPLE dictionary as the app asset (development only).')

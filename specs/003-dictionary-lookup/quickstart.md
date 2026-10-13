@@ -8,8 +8,9 @@ and [contracts/](contracts/).
 As in 002 ([../002-pdf-reader/quickstart.md](../002-pdf-reader/quickstart.md)): Flutter
 3.47, the Galaxy S24 (`RFCX80MJSBN`), desktop Chrome, and Chrome on the phone. Also:
 
-- Python 3 with `pip install wordfreq`, and about 30 GB of free disk for the first
-  dictionary build (2.8 GB download; the build streams it).
+- Python 3 with `wordfreq` in a venv (`python3 -m venv build/dictionary/venv &&
+  build/dictionary/venv/bin/pip install wordfreq`), and about 4 GB of free disk for the
+  first dictionary build (3.0 GB download; the build streams it, about 3 minutes).
 - Fixtures: `python3 tool/make_fixtures.py --lookup` adds:
   - `lookup_prose.pdf`: the words used below, plus "exam-/ple" and "well-/known" split
     across line ends;
@@ -19,8 +20,8 @@ As in 002 ([../002-pdf-reader/quickstart.md](../002-pdf-reader/quickstart.md)): 
 ## Build the dictionary
 
 ```bash
-python3 tool/build_dictionary.py --download        # full: assets/dictionary/en.sqlite.gz
-python3 tool/build_dictionary.py --sample           # tests: build/fixtures/dict_sample.sqlite
+build/dictionary/venv/bin/python tool/build_dictionary.py --download   # full: assets/dictionary/
+build/dictionary/venv/bin/python tool/build_dictionary.py --sample     # tests: build/fixtures/
 ```
 
 The full build prints the headword count, the size gzipped and the size on the device,
@@ -28,7 +29,9 @@ and fails above 25 MB / 90 MB (research R1). Record the result here:
 
 | Build | N (top words) | Headwords | gzip | On device |
 |---|---|---|---|---|
-| _first full build_ | | | | |
+| 2026-10-13, dump 2026-09-02, rules as R1 | 200,000 | 215,353 | 39.6 MiB | 104.5 MiB (over) |
+| 2026-10-13, + usage examples only, phrases ≤ 4 words in top 20k, names in top 50k | 200,000 | 176,582 | 24.8 MiB | 66.9 MiB (at the limit) |
+| 2026-10-13, same rules (default) | 150,000 | 166,061 | 23.6 MiB | 64.0 MiB |
 
 ## Run
 

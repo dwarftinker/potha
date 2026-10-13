@@ -390,8 +390,243 @@ i1.GeneratedColumn<String> _column_24(String aliasedName) =>
       $customConstraints: 'NOT NULL DEFAULT \'fitWidth\'',
       defaultValue: const i1.CustomExpression('\'fitWidth\''),
     );
+
+final class Schema3 extends i0.VersionedSchema {
+  Schema3({required super.database}) : super(version: 3);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    books,
+    bookCovers,
+    readingProgress,
+    libraryPreferences,
+    readerPreferences,
+    lookupHistory,
+    booksLastOpenedAt,
+    booksAddedAt,
+    booksSortTitle,
+    lookupHistoryLookedUpAt,
+  ];
+  late final Shape0 books = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'books',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_12,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 bookCovers = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'book_covers',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(book_id)'],
+      columns: [_column_13, _column_14],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 readingProgress = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'reading_progress',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(book_id)'],
+      columns: [_column_13, _column_15, _column_16, _column_17, _column_18],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 libraryPreferences = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'library_preferences',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_19, _column_20, _column_21, _column_22],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 readerPreferences = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'reader_preferences',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_19, _column_23, _column_24, _column_25, _column_26],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 lookupHistory = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'lookup_history',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(book_id, word_key)'],
+      columns: [
+        _column_13,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+        _column_31,
+        _column_32,
+        _column_33,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index booksLastOpenedAt = i1.Index(
+    'books_last_opened_at',
+    'CREATE INDEX books_last_opened_at ON books (last_opened_at)',
+  );
+  final i1.Index booksAddedAt = i1.Index(
+    'books_added_at',
+    'CREATE INDEX books_added_at ON books (added_at)',
+  );
+  final i1.Index booksSortTitle = i1.Index(
+    'books_sort_title',
+    'CREATE INDEX books_sort_title ON books (sort_title)',
+  );
+  final i1.Index lookupHistoryLookedUpAt = i1.Index(
+    'lookup_history_looked_up_at',
+    'CREATE INDEX lookup_history_looked_up_at ON lookup_history (looked_up_at)',
+  );
+}
+
+class Shape5 extends i0.VersionedTable {
+  Shape5({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<int> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get theme =>
+      columnsByName['theme']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get fit =>
+      columnsByName['fit']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get tapToDefine =>
+      columnsByName['tap_to_define']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lookupHintShown =>
+      columnsByName['lookup_hint_shown']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<int> _column_25(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'tap_to_define',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL DEFAULT 0 CHECK (tap_to_define IN (0, 1))',
+      defaultValue: const i1.CustomExpression('0'),
+    );
+i1.GeneratedColumn<int> _column_26(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'lookup_hint_shown',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints:
+          'NOT NULL DEFAULT 0 CHECK (lookup_hint_shown IN (0, 1))',
+      defaultValue: const i1.CustomExpression('0'),
+    );
+
+class Shape6 extends i0.VersionedTable {
+  Shape6({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get bookId =>
+      columnsByName['book_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get wordKey =>
+      columnsByName['word_key']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get word =>
+      columnsByName['word']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get headword =>
+      columnsByName['headword']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get source =>
+      columnsByName['source']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get page =>
+      columnsByName['page']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lookedUpAt =>
+      columnsByName['looked_up_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get count =>
+      columnsByName['count']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_27(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'word_key',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_28(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'word',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_29(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'headword',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_30(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'source',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_31(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'page',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (page >= 1)',
+    );
+i1.GeneratedColumn<int> _column_32(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'looked_up_at',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_33(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'count',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL DEFAULT 1 CHECK (count >= 1)',
+      defaultValue: const i1.CustomExpression('1'),
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -400,6 +635,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from1To2(migrator, schema);
         return 2;
+      case 2:
+        final schema = Schema3(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from2To3(migrator, schema);
+        return 3;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -408,6 +648,7 @@ i0.MigrationStepWithVersion migrationSteps({
 
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2),
+  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
 );

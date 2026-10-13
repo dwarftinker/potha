@@ -42,7 +42,7 @@ the web store and the interaction lock.
   - `VACUUM`s, gzips to assets/dictionary/en.sqlite.gz, and writes assets/dictionary/LICENSE.md (Wiktionary, wiktextract / kaikki.org, dump date, CC BY-SA 4.0 with link).
   - Prints headwords, forms, size gzipped and size on disk; exits non-zero above 25 MB gzip or 90 MB on disk.
   - Has a self-test mode `--check` that verifies the key vectors from T002.
-- [ ] T004 Make the sample first, then the full build. The sample must not wait for the 2.8 GB download (analysis G2).
+- [X] T004 Make the sample first, then the full build. The sample must not wait for the 2.8 GB download (analysis G2).
   - Add `--fetch-sample <words.txt>` to the script: for each word, fetch the per-word wiktextract JSONL that kaikki.org links from the word's page (English edition), keep the `lang_code == "en"` lines, and write them to test/fixtures/dictionary/sample.jsonl. Send no identifying data beyond a `User-Agent` of `Potha-build (https://github.com/dwarftinker/potha)`. If kaikki.org no longer serves per-word files, add `--extract-sample` instead and cut the lines from the full dump once it is downloaded.
   - The words, every word the tests use: melancholy, run, running, mouse, mice, good, better, study, studied, building, build, example, well-known, well, known, hello, reader, don't, give, give up, in, spite, in spite of, turkey, Turkey, serendipity, ephemeral, plus a few made-up control words that have no entry. Keep that word list in test/fixtures/dictionary/sample_words.txt.
   - Check that `--sample` builds; T013 can start from here.
@@ -70,19 +70,19 @@ the web store and the interaction lock.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T008 [P] Write the v2 → v3 migration test in test/unit/db/migration_test.dart. A v2 database with two `reading_progress` rows and `reader_preferences` row 1 (theme `dark`) migrates to v3:
+- [X] T008 [P] Write the v2 → v3 migration test in test/unit/db/migration_test.dart. A v2 database with two `reading_progress` rows and `reader_preferences` row 1 (theme `dark`) migrates to v3:
   - the rows are kept;
   - `reader_preferences` has `tap_to_define` = false and `lookup_hint_shown` = false;
   - `lookup_history` exists with PK (book_id, word_key) and cascades on book delete;
   - `page` < 1 and `count` < 1 are rejected.
-- [ ] T009 Change lib/core/db/app_database.dart exactly as data-model.md:
+- [X] T009 Change lib/core/db/app_database.dart exactly as data-model.md:
   - new table `LookupHistory`: `book_id` text FK → books.id cascade delete; `word_key` text; PK (book_id, word_key); `word` text; `headword` text nullable "null if not found"; `source` textEnum `offline|online|none`; `page` int check ≥ 1; `looked_up_at` datetime UTC; `count` int default 1 check ≥ 1; index on `looked_up_at`.
   - `ReaderPreferences.tapToDefine` bool default false; `ReaderPreferences.lookupHintShown` bool default false.
   - `schemaVersion` 3 with `from2To3` in `stepByStep`.
   Then run `dart run build_runner build`, `dart run drift_dev make-migrations` and `dart run drift_dev schema generate drift_schemas/app_database/ test/unit/db/generated/`; make T008 pass
-- [ ] T010 [P] Unit-test `lookupKey` in test/unit/dictionary/lookup_key_test.dart against test/fixtures/dictionary/key_vectors.tsv
-- [ ] T011 Implement `lookupKey` in lib/core/dictionary/lookup_key.dart (core, not the reader feature: the dictionary layer uses it, analysis F2); make T010 pass
-- [ ] T012 [P] Create lib/core/dictionary/lexicon.dart per contracts/lookup.md:
+- [X] T010 [P] Unit-test `lookupKey` in test/unit/dictionary/lookup_key_test.dart against test/fixtures/dictionary/key_vectors.tsv
+- [X] T011 Implement `lookupKey` in lib/core/dictionary/lookup_key.dart (core, not the reader feature: the dictionary layer uses it, analysis F2); make T010 pass
+- [X] T012 [P] Create lib/core/dictionary/lexicon.dart per contracts/lookup.md:
   - `Lexicon` (`language`, `info`, `entries(key)`, `formsOf(key)`, `hasEntry(key)`);
   - `DictionaryInfo` (source, licence, licenceUrl, sourceUrl, dumpDate, version);
   - `DictionaryEntry` (headword, pos, ipa, senses);
@@ -91,29 +91,29 @@ the web store and the interaction lock.
   - `DictionaryStatus` sealed (`notStarted`, `downloading(bytes, total)`, `unpacking`, `ready`, `failed(offline | error)`);
   - the `OnlineDictionary` interface and `OnlineResult` sealed (`found(entries)`, `notFound`, `failed`); the Wikimedia client comes in T068.
   Also create lib/core/platform/network_status.dart: the `NetworkStatus` interface (`isOnline`, `changes`), its `connectivity_plus` implementation and `networkStatusProvider`. T018 and T026 need both interfaces in this phase (analysis F1).
-- [ ] T013 [P] Write test/unit/dictionary/dictionary_database_test.dart over build/fixtures/dict_sample.sqlite (skipped with a message if it is missing; the message gives the build command):
+- [X] T013 [P] Write test/unit/dictionary/dictionary_database_test.dart over build/fixtures/dict_sample.sqlite (skipped with a message if it is missing; the message gives the build command):
   - `entries('melancholy')` has a noun and an adjective with glosses and an IPA;
   - `formsOf('mice')` → mouse, plural;
   - `formsOf('better')` includes good, comparative;
   - `entries('give up')` exists;
   - `info` reads the `meta` table;
   - an unknown key gives [].
-- [ ] T014 Implement `DictionaryDatabase` (read-only drift database with `customSelect` queries, implementing `Lexicon`; JSON senses parsed once per row) in lib/core/dictionary/dictionary_database.dart; make T013 pass
-- [ ] T015 [P] Unit-test the io store in test/unit/dictionary/dictionary_store_io_test.dart with a temporary support directory and a small gzip asset:
+- [X] T014 Implement `DictionaryDatabase` (read-only drift database with `customSelect` queries, implementing `Lexicon`; JSON senses parsed once per row) in lib/core/dictionary/dictionary_database.dart; make T013 pass
+- [X] T015 [P] Unit-test the io store in test/unit/dictionary/dictionary_store_io_test.dart with a temporary support directory and a small gzip asset:
   - status goes `unpacking` → `ready`;
   - the file is written under a temporary name and renamed;
   - an interrupted unpack (temp file left) is redone;
   - a second `ensureStarted` doesn't unpack again;
   - older `en-*.sqlite` files are deleted once ready;
   - `ready` completes with a working `Lexicon`.
-- [ ] T016 Create lib/core/dictionary/dictionary_store.dart (the `DictionaryStore` interface, `dictionaryStoreProvider` choosing io or web by conditional import) and lib/core/dictionary/dictionary_store_io.dart. The io store unpacks the asset in `Isolate.run` with `gzip` into `<app support>/dictionary/en-<version>.sqlite` and opens it read-only via `DriftNativeOptions(databasePath:)`. The version comes from a small `assets/dictionary/version` line written by T003 (add it to the assets list). Make T015 pass
-- [ ] T017 [P] Write test/web/dictionary_store_web_test.dart (`flutter test --platform chrome`). It serves a small gzip dictionary, and checks:
+- [X] T016 Create lib/core/dictionary/dictionary_store.dart (the `DictionaryStore` interface, `dictionaryStoreProvider` choosing io or web by conditional import) and lib/core/dictionary/dictionary_store_io.dart. The io store unpacks the asset in `Isolate.run` with `gzip` into `<app support>/dictionary/en-<version>.sqlite` and opens it read-only via `DriftNativeOptions(databasePath:)`. The version comes from a small `assets/dictionary/version` line written by T003 (add it to the assets list). Make T015 pass
+- [X] T017 [P] Write test/web/dictionary_store_web_test.dart (`flutter test --platform chrome`). It serves a small gzip dictionary, and checks:
   - progress events rise to 100%, then `ready`;
   - a lookup works afterwards;
   - a fetch failure gives `failed(error)`, and the next `ensureStarted` retries;
   - with `navigator.onLine` false, it gives `failed(offline)`;
   - no request happens before `ensureStarted` (FR-022).
-- [ ] T018 Implement lib/core/dictionary/dictionary_store_web.dart: `fetch` with `Content-Length` progress, `DecompressionStream('gzip')` through `package:web`, and `DriftWebOptions.initializeDatabase` under the name `dictionary-en-<version>`, deleting older names. If T006 showed the fallback is needed, stream into OPFS instead and note it in the file header. Make T017 pass
+- [X] T018 Implement lib/core/dictionary/dictionary_store_web.dart: `fetch` with `Content-Length` progress, `DecompressionStream('gzip')` through `package:web`, and `DriftWebOptions.initializeDatabase` under the name `dictionary-en-<version>`, deleting older names. If T006 showed the fallback is needed, stream into OPFS instead and note it in the file header. Make T017 pass
 - [ ] T019 [P] Extend lib/core/document/document_format.dart per contracts/lookup.md:
   - `DocumentViewController.pageRectToGlobal(int page, Rect normalised)` and `setInteractionLocked(bool)`;
   - `enum HighlightKind { match, activeMatch, selection }` replacing `PageHighlight.active`;
