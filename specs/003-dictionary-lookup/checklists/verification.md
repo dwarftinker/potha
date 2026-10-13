@@ -29,23 +29,28 @@ Release build (`tool/build_web.sh`) served from the computer over `adb reverse`.
 | Airplane mode: lookups work; a word not in the dictionary says "Online search isn't available offline." | Pass |
 | Reload, open a book: the dictionary isn't downloaded again | Pass |
 | Long-press drag across three words: selection grows, page stays still, phrase fallback shown | Pass |
-| Peak memory during download and set-up | 712 MB renderer RSS (270 MB before, 407 MB after). Not a failure on the S24; see research R2 (decision pending) |
+| Peak memory during download and set-up | 712 MB renderer RSS at first (270 MB before, 407 MB after); 410 MB (228 → 270 MB) after the streaming fix, finding 1 |
 
 ## Findings
 
-1. **Web memory** (R2 risk, confirmed): drift uses its IndexedDB storage on Chrome for
-   Android, which keeps the 65 MB database in memory, and set-up peaks at 712 MB for
-   the tab. COOP/COEP headers alone didn't get drift to OPFS (its worker failed).
-   Options: the streaming fallback in R2, or work out drift's OPFS mode with the hosting
-   headers. Needs a decision.
+1. **Web memory** (R2 risk, confirmed, fixed): drift uses its IndexedDB storage on
+   Chrome for Android, and set-up peaked at 712 MB for the tab. COOP/COEP headers alone
+   didn't get drift to OPFS (its worker failed). Fixed with the R2 streaming fallback:
+   the download goes straight into IndexedDB in 4 KiB blocks; peak 410 MB, 270 MB after
+   (Chrome tests added for the streamed path, a cut-short write, and small batches).
+5. **Old web dictionary not deleted after an upgrade** (found checking 20260902.1 →
+   .2 on the S24): drift's probe doesn't list IndexedDB databases, so the old copy
+   stayed. Older `dictionary-en-*` IndexedDB databases are now deleted by name (Chrome
+   test added). Checked on the S24: the old copy is gone after the next book open, and
+   nothing is downloaded again.
 2. **Offline reload of the web app** can't open a book: the reader's deferred code is
    fetched on first open, and without a service worker that fails offline, silently
    (the library stays on screen). Same gap as 001's offline-reload follow-up; the
    dictionary itself is kept.
-3. **"the", first sense** starts "...because it has already been mentioned": the build
-   took a Wiktionary sub-sense without its parent sentence. It is the only sense in the
-   dictionary that starts with an ellipsis. Fix in `tool/build_dictionary.py` (prefix
-   the parent gloss) at the next rebuild.
+3. **"the", first sense** started "...because it has already been mentioned": the build
+   took a Wiktionary sub-sense without its parent sentence (the only such sense). Fixed:
+   a gloss that starts with an ellipsis is joined to its parent; dictionary version
+   20260902.2 (test in `dictionary_database_test.dart`).
 4. **Test fixes** (no app change): `lookup_timing_test.dart` now times from finger down,
    polling every frame (it had timed from the lock flag, 50 ms polls, and undercounted);
    `lookup_flow_test.dart` reads word positions from a copy of the book with `fullyLive`

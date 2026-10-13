@@ -39,6 +39,14 @@ void main() {
     expect(adj.senses.first.tags, contains('literary'));
   }, skip: _skip);
 
+  test('a sub-sense that continues its parent ("...because") is joined to it', () async {
+    final the = (await db.entries('the')).firstWhere((e) => e.pos == 'article');
+    final gloss = the.senses.first.gloss;
+    expect(gloss, startsWith('The definite grammatical article'));
+    expect(gloss, contains('identifiable because it has already been mentioned'));
+    expect(gloss, isNot(contains('...')));
+  }, skip: _skip);
+
   test('mice is the plural of mouse', () async {
     expect(await db.formsOf('mice'), [const WordFormLink('mice', 'mouse', FormRelation.plural)]);
   }, skip: _skip);

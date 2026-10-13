@@ -177,6 +177,23 @@ def pick_examples(sense):
     return out
 
 
+ELLIPSES = ('...', '\u2026')
+
+
+def gloss_of(glosses):
+    """The most specific gloss. A sub-sense that continues its parent's sentence
+    ("...identifiable..." / "...because it has already been mentioned") is joined to it,
+    as on "the"."""
+    gloss = glosses[-1]
+    if len(glosses) > 1 and gloss.startswith(ELLIPSES):
+        parent = glosses[-2].rstrip()
+        for e in ELLIPSES:
+            parent = parent.removesuffix(e)
+            gloss = gloss.removeprefix(e)
+        return f'{parent.rstrip()} {gloss.lstrip()}'
+    return gloss
+
+
 def parse_entry(d):
     """Returns (entry or None, [(form_key, base_key, relation)])."""
     word = d.get('word')
@@ -200,7 +217,7 @@ def parse_entry(d):
         glosses = s.get('glosses') or ()
         if not glosses:
             continue
-        sense = {'g': glosses[-1]}
+        sense = {'g': gloss_of(glosses)}
         kept = [t for t in tags if t in KEEP_TAGS]
         if kept:
             sense['t'] = kept
@@ -536,7 +553,9 @@ def main():
     p.add_argument('--check', action='store_true')
     p.add_argument('--top', type=int, default=150000)
     p.add_argument('--dump-date', default=DEFAULT_DUMP_DATE)
-    p.add_argument('--build-number', type=int, default=1)
+    # Raise when the output changes for the same dump, so installed copies are replaced
+    # (the version names the unpacked file and the web database). 2: joined glosses.
+    p.add_argument('--build-number', type=int, default=2)
     args = p.parse_args()
 
     if args.check:

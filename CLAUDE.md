@@ -17,8 +17,8 @@ with GitHub Spec Kit.
 - Feature 003 (dictionary lookup) is implemented on branch `003-dictionary-lookup`; host
   tests, Chrome tests, evals (SC-001 99.8%, SC-003 99.0%, SC-004 100%) and the S24 device
   tests pass: lookup p95 91 ms (SC-002), unpack 437 ms, APK +27.6 MB. Web on the S24
-  works offline but peaks at 712 MB during dictionary set-up (decision pending, research
-  R2). Open: T084 (manual quickstart run, SC-005). See
+  works offline; dictionary set-up streams into IndexedDB (peak 410 MB, was 712 MB;
+  research R2). Open: T084 (manual quickstart run, SC-005). See
   `specs/003-dictionary-lookup/checklists/verification.md`.
 - Spec Kit is initialised. The constitution is ratified (v2.0.0) in
   `.specify/memory/constitution.md`.
@@ -148,6 +148,11 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
 - Web tests that use drift load `test/web/sqlite3.wasm` and `drift_worker.js`, symlinks
   to `web/`. Widget tests get a fake dictionary, network and online client from
   `TestApp`; create fakes inside each test (their futures must be in the fake-async zone).
+- The web dictionary is written straight into IndexedDB in sqlite3's
+  `IndexedDbFileSystem` layout (`lib/core/dictionary/sqlite_idb_writer.dart`). It depends
+  on sqlite3 3.5.x / drift 2.35: re-run `flutter test --platform chrome test/web` after
+  upgrading either. Raise the dictionary build number (`--build-number`, default in
+  `tool/build_dictionary.py`) whenever the build's output changes.
 - PDFium (pdfrx 2.6.5) ends a line with `\r\n` and replaces a line-end hyphen with
   U+0002 and no line break; the word rules rely on this (003 research R4).
 - Pinned on purpose: `connectivity_plus` 7.3.1 (7.3.2 is under two weeks old; revisit
@@ -191,7 +196,6 @@ Once per project: `/speckit.constitution`. Then, for each feature:
    covers 001 T077 and 002 T077) before it is posted.
 3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline
    reloads, and bundling Noto fonts for non-Latin titles.
-4. Finish verifying 003: quickstart scenarios 1–26 by hand (T084) and SC-005; decide
-   on web dictionary memory (R2: streaming fallback or drift's OPFS mode); fix the "the"
-   gloss in the dictionary build. See `specs/003-dictionary-lookup/checklists/verification.md`.
+4. Finish verifying 003: quickstart scenarios 1–26 by hand (T084) and SC-005. See
+   `specs/003-dictionary-lookup/checklists/verification.md`.
 5. Decide whether to publish a prebuilt dictionary file (needs approval).

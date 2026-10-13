@@ -98,9 +98,21 @@ pinned to a release at least two weeks old.
   was cross-origin isolated but drift's worker still failed ("workerError"), so OPFS
   wasn't reached. The tab's renderer went from 270 MB to a **712 MB peak** and settled
   at 407 MB with the dictionary open (the IndexedDB VFS keeps the database in memory).
-  That's fine on the S24 (8 GB) but risky on a 3–4 GB phone. The streaming fallback
-  above (or getting drift's OPFS mode working, with the hosting headers) would cut the
-  peak. Decision pending (the user's).
+  That's fine on the S24 (8 GB) but risky on a 3–4 GB phone.
+- **Streaming fallback, built (2026-10-13)**: drift's initializeDatabase path held the
+  file several times over (the page's compressed chunks and decompressed buffer; in the
+  worker, the received buffer, the in-memory file, a copy for IndexedDB and its 4 KiB
+  blocks). The store now probes first and picks drift's storage itself:
+  - **IndexedDB** (Chrome on Android): the download is decompressed as it arrives and
+    written straight into IndexedDB in sqlite3's `IndexedDbFileSystem` layout, 1 MiB per
+    transaction, file entry last (`lib/core/dictionary/sqlite_idb_writer.dart`). drift
+    then finds an existing database and only reads it. The layout is sqlite3 3.5.x's
+    (drift 2.35, pinned); the Chrome tests open the written file through drift.
+  - **OPFS**: unchanged route through `initializeDatabase`, which writes to disk without
+    the in-memory copies; the download no longer keeps the compressed bytes.
+  Measured on the S24 (same book, same steps): renderer 228 MB → **410 MB peak** → 270 MB
+  after, against 270 → 712 → 407 MB before (set-up overhead 182 MB instead of 442 MB).
+  The rest is drift reading the database into memory, which IndexedDB storage needs.
 - **Why gzip in the asset**: the APK, the iOS bundle and web hosting all get the same
   small file. Web progress is then measured on a known size, without depending on the
   server compressing the response.
