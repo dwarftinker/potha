@@ -12,6 +12,15 @@ Requires: python3 and Ghostscript (`gs` 10.02 or later, for object streams).
           draws it blank),
           accents.pdf ("Café", "CAFE", "naïve"), text_500.pdf ("whale" on known pages)
         build/fixtures/ (not committed): long_2000.pdf, short_20.pdf
+    python3 tool/make_fixtures.py --lookup   # also the 003 lookup fixtures (test/fixtures/):
+        lookup_prose.pdf, 3 pages of Helvetica 12 pt on 15 pt lines from (72, 702):
+          page 1: LOOKUP_PAGE1 below (melancholy, running, mice, better, studied, building,
+            “Hello,”, reader's, don't, give up, in spite of, Turkey, a number, a URL, an email);
+          page 2: "exam-" / "ple" and "well-" / "known" split across line ends, and an
+            inline "well-known";
+          page 3: filler, with LOOKUP_BOTTOM_LINE in the bottom third (top placement).
+        lookup_garbled.pdf: one page in a Type 3 font with no ToUnicode map and made-up
+          glyph names, so text extraction gives unmapped characters (FR-029).
 """
 
 import os
@@ -131,7 +140,7 @@ def build_doc(pages, outline=None):
 
     pages: list of dicts with keys
       size: (w, h) in points (default US Letter)
-      lines: text lines (WinAnsi; Latin-1 characters allowed)
+      lines: text lines (WinAnsi: Latin-1 plus curly quotes and dashes)
       image: optional (w, h, raw_rgb_bytes) drawn above the text
       links: optional list of (rect, target) where target is a page index (0-based)
              or a URL string
@@ -183,7 +192,7 @@ def build_doc(pages, outline=None):
             ops += f"BT /F1 12 Tf 15 TL 72 {h - 90} Td\n".encode()
             for line in lines:
                 esc = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-                ops += b"(" + esc.encode("latin-1") + b") Tj T*\n"
+                ops += b"(" + esc.encode("cp1252") + b") Tj T*\n"
             ops += b"ET\n"
         content = add(stream(b"", bytes(ops)))
         annots = []
@@ -305,6 +314,71 @@ def reader_fixtures():
           folder=LARGE)
 
 
+LOOKUP_PAGE1 = [
+    "The melancholy reader was running late.",
+    "Three mice ran better than the dog.",
+    "She studied the building plans.",
+    "\u201cHello,\u201d said the reader's friend; don't give up.",
+    "They went on in spite of the rain in Turkey.",
+    "Call 2026 or visit https://example.org or potha.app",
+    "Write to someone@example.org today.",
+]
+LOOKUP_PAGE2 = [
+    "He gave an exam-",
+    "ple of a well-",
+    "known ephemeral word, a well-known fact.",
+]
+LOOKUP_BOTTOM_LINE = "The serendipity of melancholy words."
+
+
+def type3_garbled_pdf():
+    """A page whose only font is Type 3 with made-up glyph names and no ToUnicode."""
+    glyph = b"600 0 0 0 500 700 d1 50 0 400 700 re f"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Count 1 /Kids [3 0 R] >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    ]
+    text = bytes([1, 2, 3, 1, 4, 32, 2, 3, 4, 1])
+    esc = text.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
+    ops = b"BT /F1 24 Tf 72 700 Td (" + esc + b") Tj ET\n"
+    objects.append(f"<< /Length {len(ops)} >>\nstream\n".encode() + ops + b"\nendstream")
+    procs = " ".join(f"/zq{i} {6 + i} 0 R" for i in range(4))
+    objects.append((
+        "<< /Type /Font /Subtype /Type3 /FontBBox [0 0 600 700] "
+        "/FontMatrix [0.001 0 0 0.001 0 0] /CharProcs << " + procs + " >> "
+        "/Encoding << /Type /Encoding /Differences [1 /zq0 /zq1 /zq2 /zq3 32 /zq0] >> "
+        "/FirstChar 1 /LastChar 32 /Widths [" + " ".join(["600"] * 32) + "] "
+        "/Resources << >> >>").encode())
+    for _ in range(4):
+        objects.append(f"<< /Length {len(glyph)} >>\nstream\n".encode() + glyph + b"\nendstream")
+    out = bytearray(b"%PDF-1.5\n%\xe2\xe3\xcf\xd3\n")
+    offsets = []
+    for n, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{n} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += (f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref}\n%%EOF\n").encode()
+    return bytes(out)
+
+
+def lookup_fixtures():
+    rng = random.Random(3)
+    bottom = text_lines(rng, 40)
+    bottom[38] = LOOKUP_BOTTOM_LINE
+    write("lookup_prose.pdf", build_doc([
+        {"lines": LOOKUP_PAGE1},
+        {"lines": LOOKUP_PAGE2},
+        {"lines": bottom},
+    ]))
+    write("lookup_garbled.pdf", type3_garbled_pdf())
+
+
 XMP = """<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -351,6 +425,9 @@ def main():
 
     if "--reader" in sys.argv:
         reader_fixtures()
+
+    if "--lookup" in sys.argv:
+        lookup_fixtures()
 
 
 if __name__ == "__main__":

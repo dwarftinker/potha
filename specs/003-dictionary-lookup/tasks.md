@@ -29,9 +29,9 @@ on its own.
 **Purpose**: Dependencies, the dictionary build, fixtures, and the two spikes that decide
 the web store and the interaction lock.
 
-- [ ] T001 Add to pubspec.yaml: `http: ^1.6.0` (already resolved through pdfrx; comment "used directly for online search, 003 R9"); `connectivity_plus` pinned to the newest release at least two weeks old (check pub.dev; comment with the date to revisit, as with the other pins); the asset `assets/dictionary/en.sqlite.gz` and `assets/dictionary/LICENSE.md`. Add `assets/dictionary/en.sqlite.gz` and `build/dictionary/` to .gitignore. Run `flutter pub get` and confirm that no other resolved versions change in pubspec.lock
-- [ ] T002 [P] Write the shared key-normalisation vectors in test/fixtures/dictionary/key_vectors.tsv (input → key): case ("Hello" → "hello"), NFC (decomposed "café" → composed), apostrophes ("don’t" → "don't"), whitespace runs ("give   up" → "give up"), hyphens kept ("well-known"), and leading/trailing spaces. Both the Python build and Dart's `lookupKey` are tested against this file (research R5)
-- [ ] T003 Write tool/build_dictionary.py (Python 3, standard library + `wordfreq`), per research R1 and data-model.md "Dictionary database":
+- [X] T001 Add to pubspec.yaml: `http: ^1.6.0` (already resolved through pdfrx; comment "used directly for online search, 003 R9"); `connectivity_plus` pinned to the newest release at least two weeks old (check pub.dev; comment with the date to revisit, as with the other pins); the asset `assets/dictionary/en.sqlite.gz` and `assets/dictionary/LICENSE.md`. Add `assets/dictionary/en.sqlite.gz` and `build/dictionary/` to .gitignore. Run `flutter pub get` and confirm that no other resolved versions change in pubspec.lock
+- [X] T002 [P] Write the shared key-normalisation vectors in test/fixtures/dictionary/key_vectors.tsv (input → key): case ("Hello" → "hello"), NFC (decomposed "café" → composed), apostrophes ("don’t" → "don't"), whitespace runs ("give   up" → "give up"), hyphens kept ("well-known"), and leading/trailing spaces. Both the Python build and Dart's `lookupKey` are tested against this file (research R5)
+- [X] T003 Write tool/build_dictionary.py (Python 3, standard library + `wordfreq`), per research R1 and data-model.md "Dictionary database":
   - `--download` fetches kaikki.org's `raw-wiktextract-data.jsonl.gz` (English edition) into build/dictionary/ (resumable), then builds.
   - `--input <jsonl[.gz]>` builds from a given file; `--sample` builds build/fixtures/dict_sample.sqlite from test/fixtures/dictionary/sample.jsonl.
   - `--top N` (default 200000).
@@ -47,7 +47,7 @@ the web store and the interaction lock.
   - The words, every word the tests use: melancholy, run, running, mouse, mice, good, better, study, studied, building, build, example, well-known, well, known, hello, reader, don't, give, give up, in, spite, in spite of, turkey, Turkey, serendipity, ephemeral, plus a few made-up control words that have no entry. Keep that word list in test/fixtures/dictionary/sample_words.txt.
   - Check that `--sample` builds; T013 can start from here.
   - Then run `python3 tool/build_dictionary.py --download` (in the background, alongside Phase 2). Record N, headwords, the gzip size and the on-disk size in the table in specs/003-dictionary-lookup/quickstart.md; lower `--top` if over budget.
-- [ ] T005 [P] Extend tool/make_fixtures.py with a `--lookup` flag writing test/fixtures/lookup_prose.pdf. It is 3 text pages:
+- [X] T005 [P] Extend tool/make_fixtures.py with a `--lookup` flag writing test/fixtures/lookup_prose.pdf. It is 3 text pages:
   - page 1: "melancholy", "running", "mice", "better", "studied", "building", “Hello,”, "reader's", "don't", "give up", "in spite of", "Turkey", a number, a URL and an email address, each at known positions;
   - page 2: "exam-" / "ple" and "well-" / "known" split across line ends;
   - page 3: words in the bottom third, for top placement.

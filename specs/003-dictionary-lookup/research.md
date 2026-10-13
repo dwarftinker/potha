@@ -128,8 +128,13 @@ pinned to a release at least two weeks old.
        rect is lower and starts a line) gives two candidates: the joined word and the
        hyphenated word. The lookup tries them in that order (R5), so "exam-/ple" →
        "example", while "well-/known" falls back to "well-known".
-     - A soft hyphen (U+00AD), or PDFium's line-break hyphen marker if it emits one, is
-       always joined.
+     - A soft hyphen (U+00AD) is always joined.
+     - **Measured (T005, pdfrx 2.6.5 / PDFium):** a normal line ends in `\r\n`; a
+       line-end hyphen is replaced by U+0002 with no line break (`exam\u0002ple`,
+       `well\u0002known`). So U+0002 between two letters is the line-break hyphen and
+       gives both candidates (joined, then hyphenated); the "next line" case above is
+       kept for other formats. A font without a Unicode map gives control characters
+       (U+0001–U+0004 in `lookup_garbled.pdf`), which count as garbled.
      - The result is rejected if it has no letters, or if it is a number, a URL
        (scheme, `www.`, or a domain-like `a.b` with a known TLD) or an email address
        (FR-011).

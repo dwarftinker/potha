@@ -57,6 +57,10 @@ dependencies:
   # Transitive (via wakelock_plus), pinned: 10.2.2 (2026-10-01) is under two weeks old.
   # Revisit after 2026-10-15.
   package_info_plus: 10.2.1
+  # Already resolved through pdfrx; used directly for online search (003 R9).
+  http: ^1.6.0
+  # Pinned: 7.3.2 (2026-10-01) is under two weeks old. Revisit after 2026-10-15.
+  connectivity_plus: 7.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -92,6 +96,12 @@ flutter:
         - asset: assets/fonts/Roboto-Regular.ttf
         - asset: assets/fonts/Roboto-Medium.ttf
           weight: 500
+
+  # The dictionary (003 research R1-R2): built by tool/build_dictionary.py, not committed.
+  assets:
+    - assets/dictionary/en.sqlite.gz
+    - assets/dictionary/version
+    - assets/dictionary/LICENSE.md
 
   # To add assets to your application, add an assets section, like this:
   # assets:

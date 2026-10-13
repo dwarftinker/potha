@@ -39,10 +39,15 @@ void main() {
     final doc = await open('outline_links.pdf');
     addTearDown(doc.close);
     final outline = await doc.loadOutline();
-    expect(outline.map((e) => (e.title, e.page)),
-        [('Chapter One', 1), ('Chapter Two', 5), ('Chapter Three', 9)]);
-    expect(outline[1].children.map((e) => (e.title, e.page)),
-        [('Section 2.1', 6), ('Section 2.2', 7)]);
+    expect(outline.map((e) => (e.title, e.page)), [
+      ('Chapter One', 1),
+      ('Chapter Two', 5),
+      ('Chapter Three', 9),
+    ]);
+    expect(outline[1].children.map((e) => (e.title, e.page)), [
+      ('Section 2.1', 6),
+      ('Section 2.2', 7),
+    ]);
     expect(outline[2].children.every((e) => e.children.isEmpty), isTrue);
   }, skip: _skip);
 
@@ -84,6 +89,27 @@ void main() {
     // The first line sits near the top of the page.
     expect(c.top, lessThan(0.2));
     expect(text.hasText, isTrue);
+  }, skip: _skip);
+
+  // 003 research R4: PDFium ends a normal line with "\r\n", and replaces a line-end hyphen
+  // with U+0002 and no line break ("exam\u0002ple"). The word rules depend on both.
+  test('lookup_prose.pdf: line breaks, line-end hyphens and curly quotes (003)', () async {
+    final doc = await open('lookup_prose.pdf');
+    addTearDown(doc.close);
+    final page1 = (await doc.loadPageText(1))!.text;
+    expect(page1, contains('melancholy reader was running late.\r\nThree mice'));
+    expect(page1, contains('\u201cHello,\u201d'));
+    final page2 = (await doc.loadPageText(2))!;
+    expect(page2.text, contains('exam\u0002ple of a well\u0002known'));
+    expect(page2.text, contains('a well-known fact'));
+    expect(page2.charRects, hasLength(page2.text.length));
+  }, skip: _skip);
+
+  test('lookup_garbled.pdf extracts control characters, not words (003 FR-029)', () async {
+    final doc = await open('lookup_garbled.pdf');
+    addTearDown(doc.close);
+    final text = (await doc.loadPageText(1))!.text;
+    expect(text, '\u0001\u0002\u0003\u0001\u0004 \u0002\u0003\u0004\u0001');
   }, skip: _skip);
 
   test('loadPageText is empty for an image-only page', () async {

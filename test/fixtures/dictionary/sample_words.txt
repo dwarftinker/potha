@@ -1,0 +1,55 @@
+# Words the tests look up (T004). Refresh sample.jsonl with:
+#   python3 tool/build_dictionary.py --fetch-sample test/fixtures/dictionary/sample_words.txt
+# The last three are made up and have no entry (control words).
+melancholy
+run
+running
+mouse
+mice
+good
+better
+best
+study
+studied
+studies
+building
+build
+example
+well-known
+well
+known
+hello
+reader
+don't
+give
+give up
+in
+spite
+in spite of
+turkey
+Turkey
+serendipity
+ephemeral
+stop
+stopped
+make
+making
+box
+boxes
+happy
+happier
+big
+biggest
+went
+go
+colour
+color
+the
+a
+of
+book
+read
+word
+zorblax
+flimbertoon
+quazzle
