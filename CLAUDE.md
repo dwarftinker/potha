@@ -11,10 +11,10 @@ with GitHub Spec Kit.
   mobile Chrome; 77 of 79 tasks done. Open: T041 (iOS Share Extension, needs a Mac),
   T077 (upstream pdfrx issue, needs approval). See
   `specs/001-library-and-import/checklists/verification.md`.
-- Feature 002 (PDF reader) is implemented on branch `002-pdf-reader`. Device tests and
+- Feature 002 (PDF reader) is merged (PR #3). Device tests and
   every performance target pass on the Galaxy S24 (`specs/002-pdf-reader/checklists/
   verification.md`). Open: T076 (manual quickstart run on the phone and in browsers).
-- Feature 003 (dictionary lookup) is implemented on branch `003-dictionary-lookup`; host
+- Feature 003 (dictionary lookup) is merged (PR #4); host
   tests, Chrome tests, evals (SC-001 99.8%, SC-003 99.0%, SC-004 100%) and the S24 device
   tests pass: lookup p95 91 ms (SC-002), unpack 437 ms, APK +27.6 MB. Web on the S24
   works offline; dictionary set-up streams into IndexedDB (peak 410 MB, was 712 MB;
@@ -155,6 +155,16 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   `tool/build_dictionary.py`) whenever the build's output changes.
 - PDFium (pdfrx 2.6.5) ends a line with `\r\n` and replaces a line-end hyphen with
   U+0002 and no line break; the word rules rely on this (003 research R4).
+- Web offline: `web/potha_sw.js` is Potha's service worker (Flutter's is deprecated and
+  not registered; `web/flutter_bootstrap.js` registers ours after the first frame). Only
+  `tool/build_web.sh` fills in its file list and version
+  (`tool/write_service_worker.dart`); under `flutter run` it refuses to install. A new
+  deploy takes over once every tab of the app is closed. To check offline: serve
+  `build/web`, load once, then stop the server and reload (on the phone, airplane mode
+  alone isn't enough: `adb reverse` still reaches the server over USB).
+- drift 2.35 on IndexedDB saves writes only after statements; anything drift changes
+  without one (the schema version) stays unsaved until the next write. Hence the
+  `PRAGMA user_version` in `AppDatabase.beforeOpen`; keep it unless drift fixes this.
 - Pinned on purpose: `connectivity_plus` 7.3.1 (7.3.2 is under two weeks old; revisit
   after 2026-10-15).
 - Pinned on purpose: `archive` 4.3.0 and `image` 4.10.1 (image 4.11.0 needs archive 4.4+
@@ -194,8 +204,10 @@ Once per project: `/speckit.constitution`. Then, for each feature:
    `specs/002-pdf-reader/checklists/verification.md`.
 2. Approve or edit the upstream pdfrx request (`specs/002-pdf-reader/upstream-request.md`,
    covers 001 T077 and 002 T077) before it is posted.
-3. Decide on the web follow-ups in 001's `verification.md`: a service worker for offline
-   reloads, and bundling Noto fonts for non-Latin titles.
+3. Web offline reload (branch `web-offline-reload`): verified on the S24 in airplane
+   mode; merge it. Approve or edit the drift report
+   (`specs/001-library-and-import/upstream-drift-request.md`). Still open from 001's
+   `verification.md`: bundling Noto fonts for non-Latin titles.
 4. Finish verifying 003: quickstart scenarios 1–26 by hand (T084) and SC-005. See
    `specs/003-dictionary-lookup/checklists/verification.md`.
 5. Decide whether to publish a prebuilt dictionary file (needs approval).

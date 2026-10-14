@@ -123,8 +123,19 @@ Web and host (before merge):
 - The release APK is 80 MB because it bundles every ABI. Build per ABI
   (`--split-per-abi`) or an app bundle for distribution.
 
-- Offline reload of the web app: there is no service worker, so the app shell is not
-  cached. Spec SC-005 (airplane mode) holds for Android but not for a cold web reload.
+- Offline reload of the web app: done (2026-10-14, branch `web-offline-reload`). Potha's
+  own service worker (`web/potha_sw.js`, filled in by `tool/build_web.sh`) caches the
+  build on the first visit. Checked in desktop Chrome with the server stopped: the app
+  starts and the reader code, PDFium and SQLite come from the cache. Checked in Chrome on
+  the S24 (2026-10-14) in airplane mode with the server also stopped (`adb reverse` works
+  over USB in airplane mode): reload shows the library, a book opens, and a long-press
+  shows "brother" from the dictionary; no console errors. The same check found
+  a database bug: on a fresh web install, a reload before any other write ran onCreate
+  again (`index books_last_opened_at already exists`) and the library never loaded.
+  drift 2.35 saves IndexedDB writes only after statements and sets the schema version
+  last, without one; `AppDatabase.beforeOpen` now sets it itself
+  (`test/web/app_database_web_test.dart`; upstream report drafted in
+  `specs/001-library-and-import/upstream-drift-request.md`, not posted).
 - Non-Latin text on the web (for example Sinhala titles) makes Flutter download fallback
   fonts from fonts.gstatic.com. Bundling Noto Sans Sinhala (and others as needed) would
   avoid that.
