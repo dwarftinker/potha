@@ -182,6 +182,13 @@ class AppDatabase extends _$AppDatabase {
     ),
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      if (details.wasCreated || details.hadUpgrade) {
+        // drift sets the schema version after beforeOpen, and on the web (IndexedDB,
+        // drift 2.35) that change is only saved with the next statement. Reloading before
+        // any other write then ran onCreate again on the existing tables, and the library
+        // never loaded. Setting it here saves it now (test/web/app_database_web_test.dart).
+        await customStatement('PRAGMA user_version = ${details.versionNow}');
+      }
     },
   );
 }

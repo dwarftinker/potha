@@ -46,7 +46,8 @@ Release build (`tool/build_web.sh`) served from the computer over `adb reverse`.
 2. **Offline reload of the web app** can't open a book: the reader's deferred code is
    fetched on first open, and without a service worker that fails offline, silently
    (the library stays on screen). Same gap as 001's offline-reload follow-up; the
-   dictionary itself is kept.
+   dictionary itself is kept. Fixed by the service worker (001 `verification.md`,
+   follow-ups); the worker leaves the dictionary download alone.
 3. **"the", first sense** started "...because it has already been mentioned": the build
    took a Wiktionary sub-sense without its parent sentence (the only such sense). Fixed:
    a gloss that starts with an ellipsis is joined to its parent; dictionary version
