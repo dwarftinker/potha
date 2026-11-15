@@ -39,3 +39,6 @@ ios/Runner/GeneratedPluginRegistrant.*
 # 003: the built dictionary (tool/build_dictionary.py), not committed
 assets/dictionary/en.sqlite.gz
 assets/dictionary/version
+
+# Cloudflare Wrangler
+.wrangler/
