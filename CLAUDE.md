@@ -112,6 +112,7 @@ flutter drive --profile --no-dds --driver=test_driver/perf_driver.dart \
   --target=integration_test/reader_open_timing_test.dart -d <android-device> # 002 SC-001/6/7
 ```
 
+- Deploying the web app to Cloudflare Pages (`potha.dwarftinker.com`): see `deploy.md`.
 - Mobile web needs a secure context for OPFS: `adb reverse tcp:8080 tcp:8080` and open
   `http://localhost:8080` on the phone, or serve over HTTPS.
 - After changing a drift table: bump `schemaVersion`, write the migration, then run
